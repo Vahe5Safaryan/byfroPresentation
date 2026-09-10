@@ -1,0 +1,1668 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100 antialiased selection:bg-teal-500 selection:text-white">
+<head>
+    <!-- Chosen Palette: Dark Slate Slate-950 background with Emerald & Teal accents for modern SaaS product deck aesthetic -->
+    <!-- Application Structure Plan: Single-page application designed for product presentation and walkthrough. Left side contains an interactive mobile phone frame with realistic step-by-step UI mockups and animated HTML5 Canvas maps for route navigation and tracking. Right side provides structured specification, active highlighted UI action, clear high-contrast presenter narration/script in 3 languages (FR, EN, RU), step counters, and slider navigation controls. A top control bar handles App scope (Client vs Worker), language selection, slide grid modal, and print/PDF export. -->
+    <!-- Visualization & Content Choices: Pure HTML/CSS, Tailwind utilities, and HTML5 Canvas animation loops for maps, UI widgets, phone mockups, status indicators, badges, step progression, and target markers. Zero external SVG files used (pure Unicode symbols, HTML elements, or Canvas drawing). Zero Mermaid JS used. Full Vanilla JS state machine handling scope, language, slide rendering, keyboard navigation, dynamic canvas map rendering, and PDF print layout. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Byfro - Interactive Product Master Deck</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            teal: '#14b8a6',
+                            emerald: '#10b981',
+                            dark: '#090d16',
+                            card: '#111827'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes pulse-ring {
+            0% { transform: scale(0.9); opacity: 0.9; }
+            50% { transform: scale(1.35); opacity: 0.3; }
+            100% { transform: scale(0.9); opacity: 0.9; }
+        }
+        .pulse-target {
+            animation: pulse-ring 1.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 9999px;
+        }
+        @media print {
+            .no-print { display: none !important; }
+            body { background: #ffffff !important; color: #000000 !important; }
+            #slide-stage { border: none !important; box-shadow: none !important; max-height: none !important; }
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col font-sans overflow-x-hidden bg-slate-950 text-slate-100">
+
+<!-- TOP APP HEADER & NAVBAR -->
+<header class="no-print border-b border-slate-800/80 bg-slate-900/80 backdrop-blur sticky top-0 z-40 px-4 py-3">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+
+        <!-- Brand & Title -->
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-teal to-brand-emerald flex items-center justify-center shadow-lg shadow-brand-teal/20 text-slate-950 font-black text-2xl tracking-tighter">
+                <img
+                        src=".idea/logo/BYFRO1.png"
+                        alt="BYFRO Logo"
+                        class="w-10 h-10 object-contain"
+                />
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="font-black text-lg text-white tracking-wide">BYFRO</span>
+                </div>
+                <p class="text-xs text-slate-400">Interactive Walkthrough & Product Architecture</p>
+            </div>
+        </div>
+
+        <!-- App Scope Selector (Client vs Specialist) -->
+        <div class="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-semibold">
+            <button id="btn-tab-client" onclick="switchAppScope('client')" class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 bg-brand-emerald text-white shadow-md">
+                <span class="w-2 h-2 rounded-full bg-emerald-200"></span>
+                <span>Client App</span>
+                <span id="badge-client-count" class="text-[10px] bg-black/30 px-1.5 py-0.5 rounded font-mono">16 Steps</span>
+            </button>
+            <button id="btn-tab-worker" onclick="switchAppScope('worker')" class="px-4 py-2 rounded-lg transition-all flex items-center gap-2 text-slate-400 hover:text-white">
+                <span class="w-2 h-2 rounded-full bg-slate-600"></span>
+                <span> Specialist App</span>
+                <span id="badge-worker-count" class="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded font-mono">16 Steps</span>
+            </button>
+        </div>
+
+        <!-- Controls: Language, Grid Overview, Print PDF -->
+        <div class="flex items-center gap-3">
+            <!-- Language Switcher -->
+            <div class="flex items-center bg-slate-950 rounded-lg p-1 border border-slate-800 text-xs font-bold">
+                <button onclick="setLanguage('fr')" id="lang-fr" class="px-2.5 py-1 rounded text-slate-400 hover:text-white transition">FR</button>
+                <button onclick="setLanguage('en')" id="lang-en" class="px-2.5 py-1 rounded text-slate-400 hover:text-white transition">EN</button>
+                <button onclick="setLanguage('ru')" id="lang-ru" class="px-2.5 py-1 rounded bg-brand-teal text-slate-950 font-extrabold transition">RU</button>
+            </div>
+
+            <!-- Grid View Button -->
+            <button onclick="toggleGridOverview()" id="btn-grid" title="Slide Grid Overview" class="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition flex items-center gap-1.5 text-xs font-medium">
+                <span>❖ Grid</span>
+            </button>
+
+            <!-- Print PDF Button -->
+            <button onclick="window.print()" class="px-3.5 py-2 rounded-lg bg-gradient-to-r from-emerald-600 to-brand-teal text-white text-xs font-bold hover:brightness-110 flex items-center gap-1.5 shadow-lg shadow-brand-teal/20 transition">
+                <span>🖨️ Export PDF</span>
+            </button>
+        </div>
+
+    </div>
+</header>
+
+<!-- MAIN PRESENTATION STAGE -->
+<main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col justify-center">
+
+    <div id="slide-stage" class="w-full bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col lg:flex-row min-h-[660px] lg:min-h-[720px] transition-all">
+
+        <!-- LEFT COLUMN: PHONE MOCKUP FRAME -->
+        <div class="w-full lg:w-[440px] xl:w-[480px] bg-slate-950 border-b lg:border-b-0 lg:border-r border-slate-800 flex items-center justify-center p-6 relative overflow-hidden shrink-0">
+
+            <!-- Ambient Radial Glow -->
+            <div id="mockup-ambient-glow" class="absolute -inset-10 bg-brand-teal/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <!-- Smartphone Device Frame -->
+            <div id="phone-frame" class="w-full max-w-[310px] h-[580px] rounded-[38px] border-[7px] border-slate-800 bg-slate-900 text-slate-100 shadow-2xl flex flex-col relative overflow-hidden transition-all duration-300">
+
+                <!-- Phone Header / Status Bar -->
+                <div id="phone-status-bar" class="w-full px-5 pt-3 pb-1 flex items-center justify-between text-[11px] font-semibold text-slate-400 select-none z-30 bg-slate-900/90 backdrop-blur">
+                    <span class="font-mono">09:41</span>
+                    <div class="w-16 h-3 bg-slate-800 rounded-full"></div>
+                    <div class="flex items-center gap-1">
+                        <span class="text-[9px]">5G</span>
+                        <span class="w-3 h-2 bg-emerald-500 rounded-xs inline-block"></span>
+                    </div>
+                </div>
+
+                <!-- Phone Screen Dynamic Canvas Content -->
+                <div id="mockup-content" class="flex-1 overflow-y-auto custom-scrollbar p-3 flex flex-col relative text-xs">
+                    <!-- Dynamically populated via JavaScript based on current slide -->
+                </div>
+
+                <!-- Pulsing Target Hotspot Pointer -->
+                <div id="click-target-container" class="absolute pointer-events-none z-40 transition-all duration-300" style="top: 50%; left: 50%;">
+                    <div class="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2">
+                        <div class="w-12 h-12 rounded-full border-2 border-brand-teal pulse-target absolute"></div>
+                        <div class="w-7 h-7 rounded-full bg-brand-teal text-slate-950 font-black shadow-xl flex items-center justify-center text-xs border border-white">
+                            👆
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Phone Bottom Home Bar -->
+                <div class="w-full bg-slate-900 py-1.5 flex items-center justify-center z-30">
+                    <div class="w-24 h-1 bg-slate-700 rounded-full"></div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN: SLIDE SPECIFICATION & NARRATION -->
+        <div class="flex-1 flex flex-col justify-between p-6 sm:p-8 lg:p-10 overflow-y-auto custom-scrollbar">
+
+            <div>
+                <!-- Meta Header -->
+                <div class="flex items-center justify-between gap-4 mb-4 border-b border-slate-800/80 pb-3">
+                    <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider">
+                        <span id="slide-app-badge" class="px-2.5 py-1 rounded-md bg-emerald-950 text-emerald-300 border border-emerald-800/50">Client App</span>
+                        <span class="text-slate-600">•</span>
+                        <span id="slide-stage-category" class="text-brand-teal font-extrabold">Booking Flow</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-slate-400">Step</span>
+                        <span id="slide-counter" class="text-sm font-mono font-bold text-white bg-slate-950 border border-slate-800 px-3 py-1 rounded-lg">01 / 16</span>
+                    </div>
+                </div>
+
+                <!-- Slide Title -->
+                <h2 id="slide-title" class="text-2xl sm:text-3xl font-black text-white tracking-tight mb-3">
+                    Welcome & Login with Phone
+                </h2>
+
+                <!-- Subtitle -->
+                <p id="slide-subtitle" class="text-sm text-slate-300 mb-5 leading-relaxed">
+                    Immediate phone-based passwordless authentication for rapid customer onboarding without friction.
+                </p>
+
+                <!-- Focused Action Target Box -->
+                <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 mb-5 shadow-inner">
+                    <div class="flex items-start gap-3.5">
+                        <div class="w-9 h-9 rounded-xl bg-brand-teal/20 text-brand-teal flex items-center justify-center font-bold text-base shrink-0 mt-0.5 border border-brand-teal/30">
+                            🎯
+                        </div>
+                        <div>
+                            <div class="text-[11px] uppercase tracking-wider font-extrabold text-brand-teal mb-1" id="lbl-highlighted-action">Focused UI Action</div>
+                            <div id="slide-action-text" class="text-sm font-medium text-slate-200 leading-snug">
+                                Tap <span class="text-brand-teal font-bold">"Get Code"</span> after selecting the phone country code (+49) and entering your mobile number.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PRESENTER SCRIPT / VOICEOVER CONTAINER -->
+                <div class="bg-slate-950 border border-brand-teal/40 rounded-2xl p-5 shadow-xl relative overflow-hidden">
+
+                    <!-- Banner Explain Purpose -->
+                    <div class="flex items-center justify-between border-b border-slate-800/80 pb-2.5 mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="text-base">🎙️</span>
+                            <span id="lbl-narration-title" class="text-xs font-extrabold text-brand-teal uppercase tracking-wider">Сценарий презентации</span>
+                        </div>
+                        <span id="active-lang-badge" class="text-[10px] bg-brand-teal/20 text-brand-teal border border-brand-teal/40 px-2.5 py-0.5 rounded font-mono font-bold uppercase">
+                RUSSIAN
+              </span>
+                    </div>
+
+                    <!-- Explanatory note on Voiceover purpose -->
+                    <div id="voiceover-purpose-note" class="text-[11px] text-slate-400 mb-3 bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-2">
+                        <span class="text-emerald-400 font-bold">💡 Назначение:</span>
+                        <span id="txt-voiceover-purpose">Готовый текст для спикера при демонстрации продукта инвесторам и клиентам.</span>
+                    </div>
+
+                    <!-- Clear High-Contrast Voiceover Text Block -->
+                    <div id="slide-narration-text" class="text-base sm:text-[15px] font-normal text-slate-100 leading-relaxed bg-slate-900/80 p-4 rounded-xl border border-slate-800/90 shadow-inner">
+                        "Откройте приложение Byfro. Введите ваш номер телефона и нажмите 'Get Code', чтобы войти в аккаунт."
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- BOTTOM SLIDE NAV CONTROLS -->
+            <div class="no-print pt-6 border-t border-slate-800/80 mt-6 flex items-center justify-between">
+                <button onclick="prevSlide()" id="btn-prev" class="px-4 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-sm font-bold text-slate-200 flex items-center gap-2 transition">
+                    <span>← Previous</span>
+                </button>
+
+                <!-- Slide Dots Progress Bar -->
+                <div id="slide-dots" class="hidden sm:flex items-center gap-1.5 overflow-x-auto max-w-[260px] px-2 py-1 custom-scrollbar">
+                    <!-- Dynamic dots -->
+                </div>
+
+                <button onclick="nextSlide()" id="btn-next" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-emerald to-brand-teal hover:brightness-110 text-sm font-bold text-slate-950 flex items-center gap-2 shadow-lg shadow-brand-teal/20 transition">
+                    <span>Next Step →</span>
+                </button>
+            </div>
+
+        </div>
+
+    </div>
+
+</main>
+
+<!-- GRID OVERVIEW MODAL -->
+<div id="grid-view" class="no-print hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md p-6 overflow-y-auto custom-scrollbar">
+    <div class="max-w-7xl mx-auto">
+        <div class="flex items-center justify-between pb-6 border-b border-slate-800 mb-8">
+            <div>
+                <h2 class="text-2xl font-black text-white">Slide Deck Architecture Overview</h2>
+                <p class="text-sm text-slate-400">Click any thumbnail to jump directly into interactive presentation mode</p>
+            </div>
+            <button onclick="toggleGridOverview()" class="px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 text-sm font-bold">
+                ✕ Close Grid
+            </button>
+        </div>
+
+        <div id="grid-cards-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <!-- Populated by JS -->
+        </div>
+    </div>
+</div>
+
+<script>
+    /* APPLICATION STATE DATA & ENGINE */
+    let currentScope = 'client'; // 'client' or 'worker'
+    let currentLang = 'ru'; // 'fr', 'en', 'ru'
+    let currentSlideIdx = 0;
+    let mapAnimFrameId = null;
+
+    // CLIENT APP SLIDES DATA (16 DETAILED STEPS)
+    const clientSlides = [
+        {
+            id: 1,
+            category: "Onboarding & Auth",
+            title: { fr: "1. Écran d'Accueil et Téléphone", en: "1. Welcome & Mobile Phone Input", ru: "1. Главный экран и ввод телефона" },
+            subtitle: { fr: "Saisie du numéro de téléphone mobile pour l'authentification sans mot de passe", en: "Passwordless phone-based onboarding for instant access", ru: "Ввод номера телефона для авторизации без пароля по SMS" },
+            action: { fr: "Sélectionnez l'indicatif et appuyez sur 'Get Code'", en: "Select country code and tap 'Get Code'", ru: "Выберите код страны и нажмите кнопку 'Get Code'" },
+            targetPos: { top: "54%", left: "50%" },
+            script: {
+                fr: "Bienvenue dans l'application Byfro. Sur cet écran, l'utilisateur saisit son numéro de téléphone pour se connecter sans mot de passe. Cliquez sur 'Get Code' pour recevoir le SMS.",
+                en: "Welcome to the Byfro app. On this screen, customers enter their mobile number to log in seamlessly without remembering passwords. Tap 'Get Code' to trigger SMS verification.",
+                ru: "Добро пожаловать в приложение Byfro. На этом шаге клиент указывает свой номер телефона для быстрой авторизации. Нажмите кнопку 'Get Code', чтобы отправить SMS-код."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col justify-between bg-slate-900 p-3 rounded-2xl text-slate-100">
+            <div class="text-center pt-5">
+              <div class="w-12 h-12 mx-auto rounded-2xl bg-brand-emerald text-slate-950 font-black text-2xl flex items-center justify-center shadow-lg shadow-brand-emerald/30 mb-3">
+              <img
+            src=".idea/logo/BYFRO1.png"
+            alt="BYFRO Logo"
+            class="w-10 h-10 object-contain"
+        />
+              </div>
+              <h3 class="font-extrabold text-base text-white">Welcome to Byfro</h3>
+              <p class="text-[10px] text-slate-400 mt-0.5">On-demand technical home services</p>
+            </div>
+            <div class="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
+              <label class="text-[10px] font-bold text-slate-400 uppercase">Mobile Phone Number</label>
+              <div class="flex gap-2">
+                <span class="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 font-mono text-xs text-white flex items-center">+49 🇩🇪</span>
+                <input disabled value="176 982 410" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 text-xs font-mono text-white">
+              </div>
+              <button class="w-full py-2.5 rounded-xl bg-brand-emerald text-slate-950 font-extrabold text-xs shadow-md">Get Code</button>
+            </div>
+            <div class="text-center pb-2 text-[11px] text-slate-400">
+              New user? <span class="text-brand-teal font-bold underline">Register Account</span>
+            </div>
+          </div>
+        `
+        },
+        {
+            id: 2,
+            category: "Onboarding & Auth",
+            title: { fr: "2. Liste des Indicatifs Pays", en: "2. Country Prefix Modal Picker", ru: "2. Выбор телефонного кода страны" },
+            subtitle: { fr: "Sélection de l'indicatif téléphonique international avec recherche", en: "Selecting international phone prefix from search modal", ru: "Модальное окно выбора международного телефонного кода" },
+            action: { fr: "Sélectionnez votre pays dans la liste", en: "Pick target country (+49 Germany) from list", ru: "Выберите нужную страну из списка (например, Germany +49)" },
+            targetPos: { top: "35%", left: "50%" },
+            script: {
+                fr: "Si l'utilisateur voyage ou possède un numéro étranger, il peut ouvrir ce sélecteur pour choisir son pays et l'indicatif correspondant.",
+                en: "If a user has an international number, tapping the prefix opens this selector with a search bar to instantly pick their country code.",
+                ru: "Если у клиента международный номер, нажатие на префикс открывает выбор страны с поиском для корректной доставки SMS."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col bg-slate-900 p-3 rounded-2xl text-slate-100">
+            <div class="font-extrabold text-xs mb-2 text-white">Select Country Code</div>
+            <div class="p-2 rounded-xl bg-slate-950 border border-slate-800 mb-2 flex items-center gap-2 text-slate-400">
+              <span>🔍</span><span class="text-xs">Search country...</span>
+            </div>
+            <div class="space-y-1.5 overflow-y-auto pr-1">
+              <div class="p-2 rounded-lg bg-brand-teal/20 border border-brand-teal flex items-center justify-between">
+                <span class="font-semibold text-xs">🇩🇪 Germany (+49)</span>
+                <span class="text-brand-teal font-bold text-xs">✓</span>
+              </div>
+              <div class="p-2 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-between text-slate-400">
+                <span class="font-semibold text-xs">🇫🇷 France (+33)</span>
+                <span class="text-xs">+33</span>
+              </div>
+              <div class="p-2 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-between text-slate-400">
+                <span class="font-semibold text-xs">🇦🇲 Armenia (+374)</span>
+                <span class="text-xs">+374</span>
+              </div>
+              <div class="p-2 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-between text-slate-400">
+                <span class="font-semibold text-xs">🇺🇸 United States (+1)</span>
+                <span class="text-xs">+1</span>
+              </div>
+            </div>
+          </div>
+        `
+        },
+        {
+            id: 3,
+            category: "Onboarding & Auth",
+            title: { fr: "3. Verification du Code SMS", en: "3. SMS OTP Code Verification", ru: "3. Ввод SMS-кода подтверждения" },
+            subtitle: { fr: "Saisie du code à 6 chiffres reçu sur le mobile", en: "Entering 6-digit SMS code with auto-read option", ru: "Подтверждение 6-значного кода безопасности из SMS" },
+            action: { fr: "Entrez le code OTP à 6 chiffres", en: "Enter 6 digits (841092)", ru: "Введите 6 цифр кода из полученного SMS" },
+            targetPos: { top: "42%", left: "50%" },
+            script: {
+                fr: "Le client reçoit un code SMS à 6 chiffres. Une fois saisi, la plateforme valide instantanément l'identité du client.",
+                en: "The customer receives a 6-digit verification code. Once typed or auto-filled, identity is securely validated.",
+                ru: "Клиент получает 6-значный SMS-код. После ввода цифр система моментально верифицирует номер телефона."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col justify-between bg-slate-900 p-3 rounded-2xl text-slate-100">
+            <div>
+              <div class="font-extrabold text-sm mb-1 text-white">Enter SMS Code</div>
+              <p class="text-[10px] text-slate-400 mb-4">Sent to +49 176 982 410</p>
+              <div class="grid grid-cols-6 gap-1 mb-4">
+                <div class="h-9 rounded bg-slate-950 border border-brand-teal text-white text-center font-bold font-mono text-sm flex items-center justify-center">8</div>
+                <div class="h-9 rounded bg-slate-950 border border-brand-teal text-white text-center font-bold font-mono text-sm flex items-center justify-center">4</div>
+                <div class="h-9 rounded bg-slate-950 border border-brand-teal text-white text-center font-bold font-mono text-sm flex items-center justify-center">1</div>
+                <div class="h-9 rounded bg-slate-950 border border-brand-teal text-white text-center font-bold font-mono text-sm flex items-center justify-center">0</div>
+                <div class="h-9 rounded bg-slate-950 border border-brand-teal text-white text-center font-bold font-mono text-sm flex items-center justify-center">9</div>
+                <div class="h-9 rounded bg-slate-950 border border-brand-teal text-white text-center font-bold font-mono text-sm flex items-center justify-center">2</div>
+              </div>
+              <div class="text-center text-[10px] text-brand-teal font-bold">Resend code in 24s</div>
+            </div>
+            <button class="w-full py-2.5 rounded-xl bg-brand-emerald text-slate-950 font-extrabold text-xs shadow-md">Verify & Proceed</button>
+          </div>
+        `
+        },
+        {
+            id: 4,
+            category: "Onboarding & Auth",
+            title: { fr: "4. Creation du Profil Client", en: "4. Customer Profile Details Setup", ru: "4. Заполнение профиля клиента" },
+            subtitle: { fr: "Saisie du nom complet et de l'adresse e-mail", en: "Form for name, surname, and contact email address", ru: "Форма ввода имени, фамилии и контактного Email" },
+            action: { fr: "Remplissez le formulaire et appuyez sur 'Register'", en: "Fill name, email and tap 'Register'", ru: "Заполните имя и Email, затем нажмите 'Register'" },
+            targetPos: { top: "78%", left: "50%" },
+            script: {
+                fr: "Pour les nouveaux utilisateurs, un court formulaire demande le prénom, nom et l'email pour l'envoi automatique des factures.",
+                en: "For new users, this quick registration screen collects full name and email address to send digital invoices and receipts.",
+                ru: "Для новых пользователей открывается анкета профиля. Имя и Email используются для отправки чеков и счетов."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col justify-between bg-slate-900 p-3 rounded-2xl text-slate-100">
+            <div>
+              <div class="font-extrabold text-sm mb-1 text-white">Create Profile</div>
+              <p class="text-[10px] text-slate-400 mb-3">Required for receipts and service guarantees</p>
+              <div class="space-y-2.5">
+                <div>
+                  <label class="text-[9px] font-bold text-slate-400 uppercase">Full Name</label>
+                  <input disabled value="Alexander Weber" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white">
+                </div>
+                <div>
+                  <label class="text-[9px] font-bold text-slate-400 uppercase">Email Address</label>
+                  <input disabled value="alex@example.com" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white">
+                </div>
+              </div>
+            </div>
+            <button class="w-full py-2.5 rounded-xl bg-brand-emerald text-slate-950 font-extrabold text-xs shadow-md">Register Account</button>
+          </div>
+        `
+        },
+        {
+            id: 5,
+            category: "Main Map & Location",
+            hasAnimatedMap: true,
+            mapType: "client_home",
+            title: { fr: "5. Carte Principale & Géolocalisation", en: "5. Main Map & GPS Location Pin", ru: "5. Интерактивная карта и геопозиция" },
+            subtitle: { fr: "Affichage de la carte interactive avec votre position actuelle", en: "Interactive map view centered on user current location", ru: "Анимированная интерактивная карта с геопозицией и выбором адреса" },
+            action: { fr: "Cliquez sur 'Start booking' pour démarrer", en: "Tap green 'Start booking' button", ru: "Нажмите зеленую кнопку 'Start booking' для вызова" },
+            targetPos: { top: "82%", left: "50%" },
+            script: {
+                fr: "Sur l'écran d'accueil, la carte interactive détecte automatiquement la position GPS. Le bouton 'Start booking' lance immédiatement la commande.",
+                en: "On the home screen, the interactive map centers on the customer's GPS location. Tapping 'Start booking' initiates a new job order.",
+                ru: "На главном экране анимированная карта автоматически определяет местоположение. Зеленая кнопка 'Start booking' запускает процесс заказа."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col justify-between bg-slate-950 text-slate-100 rounded-2xl relative overflow-hidden">
+            <!-- CANVAS ANIMATED MAP -->
+            <div class="absolute inset-0 bg-slate-900">
+              <canvas id="animated-map-canvas" class="w-full h-full block"></canvas>
+            </div>
+
+            <!-- SEARCH OVERLAY BAR -->
+            <div class="p-2 z-10">
+              <div class="bg-slate-900/90 backdrop-blur border border-slate-800 p-2 rounded-xl shadow-lg flex items-center justify-between text-xs font-bold text-slate-100">
+                <span class="flex items-center gap-1.5"><span class="text-brand-emerald">📍</span> <span>Gusan Sheram St 111</span></span>
+                <span class="text-brand-teal text-[10px] bg-brand-teal/20 px-2 py-0.5 rounded border border-brand-teal/40">GPS Active</span>
+              </div>
+            </div>
+
+            <!-- BOTTOM DRAWER ACTION -->
+            <div class="p-3 bg-slate-900/90 backdrop-blur border-t border-slate-800 z-10 rounded-t-2xl shadow-2xl space-y-2">
+              <div class="flex justify-between items-center">
+                <div class="font-extrabold text-xs text-white">Need emergency technician?</div>
+                <span class="text-[9px] text-brand-emerald font-mono animate-pulse">● 12 Pros Nearby</span>
+              </div>
+              <button class="w-full py-2.5 rounded-xl bg-brand-emerald text-slate-950 font-black text-xs shadow-md flex items-center justify-center gap-2 uppercase tracking-wide">
+                <span>⚡ Start booking</span>
+              </button>
+            </div>
+          </div>
+        `
+        },
+        {
+            id: 6,
+            category: "Main Map & Location",
+            title: { fr: "6. Recherche d'Adresse & Favoris", en: "6. Address Search & Saved Spots", ru: "6. Поиск адреса и сохраненные места" },
+            subtitle: { fr: "Saisie d'une nouvelle adresse ou sélection parmi vos adresses enregistrées", en: "Searching address bar or picking saved places (Home/Office)", ru: "Строка поиска улицы и выбор из сохраненных адресов" },
+            action: { fr: "Saisissez la rue ou cliquez sur 'Home'", en: "Type address or pick 'Home' card", ru: "Введите название улицы или выберите 'Home'" },
+            targetPos: { top: "22%", left: "50%" },
+            script: {
+                fr: "Le client peut modifier l'adresse d'intervention en effectuant une recherche textuelle ou en choisissant une adresse enregistrée.",
+                en: "Clients can easily override the address by searching for any street/building or selecting pre-saved locations like Home or Office.",
+                ru: "Клиент может легко изменить адрес вызова: ввести новый адрес в поиске или выбрать сохраненный шаблон (Дом, Офис)."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col bg-slate-900 p-3 rounded-2xl text-slate-100">
+            <div class="font-extrabold text-xs mb-2 text-white">Select Service Address</div>
+            <div class="p-2 rounded-xl bg-slate-950 border border-brand-teal flex items-center gap-2 mb-3">
+              <span class="text-xs">🔍</span>
+              <span class="text-xs text-white font-mono font-bold">111 Gusan Sheram St...</span>
+            </div>
+            <div class="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-1.5">Saved Places</div>
+            <div class="space-y-1.5">
+              <div class="p-2 rounded-lg bg-slate-950 border border-slate-800 flex items-center gap-2">
+                <span class="text-xs">🏠</span>
+                <div>
+                  <div class="text-xs font-bold text-white">Home</div>
+                  <div class="text-[10px] text-slate-400">111 Gusan Sheram Street, Yerevan</div>
+                </div>
+              </div>
+              <div class="p-2 rounded-lg bg-slate-950 border border-slate-800 flex items-center gap-2">
+                <span class="text-xs">🏢</span>
+                <div>
+                  <div class="text-xs font-bold text-white">Office</div>
+                  <div class="text-[10px] text-slate-400">Halabyan St 16, Yerevan</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `
+        },
+        {
+            id: 7,
+            category: "Service Selection",
+            title: { fr: "7. Choix de la Catégorie de Service", en: "7. Main Service Category Picker", ru: "7. Выбор категории услуг" },
+            subtitle: { fr: "Sélection du domaine technique (Électricité, Plomberie, Chauffage...)", en: "Selecting technical discipline (Electrical, Plumbing, HVAC)", ru: "Выбор направления работ (Электрика, Сантехника, Отопление)" },
+            action: { fr: "Sélectionnez 'Electrical' pour continuer", en: "Tap 'Electrical' category card", ru: "Выберите карточку категории 'Electrical'" },
+            targetPos: { top: "28%", left: "30%" },
+            script: {
+                fr: "Étape 1 du formulaire de commande : choix de la catégorie technique. Dans cet exemple, nous choisissons 'Electrical'.",
+                en: "Step 1 of the booking flow: picking the core engineering category. Here the customer selects 'Electrical'.",
+                ru: "Шаг 1 оформления заявки: выбор профиля специалиста. В данном примере выбираем категорию 'Electrical'."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col justify-between bg-slate-900 p-3 rounded-2xl text-slate-100">
+            <div>
+              <div class="text-[10px] uppercase font-bold text-brand-teal mb-2">Step 1: Category</div>
+              <div class="grid grid-cols-2 gap-2">
+                <div class="p-3 rounded-xl bg-brand-teal/20 border-2 border-brand-teal text-white flex flex-col items-center gap-1 text-center">
+                  <span class="text-xl">⚡</span>
+                  <span class="text-xs font-extrabold">Electrical</span>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 flex flex-col items-center gap-1 text-center">
+                  <span class="text-xl">🔧</span>
+                  <span class="text-xs font-bold">Plumbing</span>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 flex flex-col items-center gap-1 text-center">
+                  <span class="text-xl">❄️</span>
+                  <span class="text-xs font-bold">HVAC / AC</span>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 flex flex-col items-center gap-1 text-center">
+                  <span class="text-xl">🔨</span>
+                  <span class="text-xs font-bold">Handyman</span>
+                </div>
+              </div>
+            </div>
+            <button class="w-full py-2.5 rounded-xl bg-brand-emerald text-slate-950 font-extrabold text-xs shadow-md">Next Step →</button>
+          </div>
+        `
+        },
+        {
+            id: 8,
+            category: "Service Selection",
+            title: { fr: "8. Checklist du Problème Technologique", en: "8. Specific Problem Checklist", ru: "8. Чек-лист конкретной проблемы" },
+            subtitle: { fr: "Précision de la panne (Prise brûlée, disjoncteur, tableau électrique)", en: "Detailed problem breakdown tags (Outlets, Breaker, Wiring)", ru: "Уточнение характера поломки (Розетки, Щиток, Замыкание)" },
+            action: { fr: "Cochez 'Short Circuit / Outlet'", en: "Select 'Short Circuit / Outlet'", ru: "Отметьте пункт 'Short Circuit / Outlet'" },
+            targetPos: { top: "35%", left: "50%" },
+            script: {
+                fr: "Pour aider l'artisan à préparer le matériel adéquat, le client sélectionne la sous-catégorie ou la nature exacte de la panne.",
+                en: "To assist specialists in bringing correct spare parts, clients select detailed problem tags such as socket short circuit or breaker trips.",
+                ru: "Клиент уточняет причину вызова с помощью тегов поломок. Это позволяет мастеру сразу взять необходимые запчасти."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col justify-between bg-slate-900 p-3 rounded-2xl text-slate-100">
+            <div>
+              <div class="text-[10px] uppercase font-bold text-brand-teal mb-2">Step 2: Issue Sub-type</div>
+              <div class="space-y-1.5">
+                <div class="p-2 rounded-xl bg-brand-teal/20 border border-brand-teal flex items-center justify-between">
+                  <span class="text-xs font-bold text-white">⚡ Short Circuit / Outlet Spark</span>
+                  <span class="text-brand-teal font-bold text-xs">✓</span>
+                </div>
+                <div class="p-2 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-between text-slate-400">
+                  <span class="text-xs">🔌 Socket Replacement</span>
+                  <span class="text-xs">+</span>
+                </div>
+                <div class="p-2 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-between text-slate-400">
+                  <span class="text-xs">💡 Lighting & Switches</span>
+                  <span class="text-xs">+</span>
+                </div>
+                <div class="p-2 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-between text-slate-400">
+                  <span class="text-xs">📟 Main Electrical Panel</span>
+                  <span class="text-xs">+</span>
+                </div>
+              </div>
+            </div>
+            <button class="w-full py-2.5 rounded-xl bg-brand-emerald text-slate-950 font-extrabold text-xs shadow-md">Next Step →</button>
+          </div>
+        `
+        },
+        {
+            id: 9,
+            category: "Service Schedule",
+            title: { fr: "9. Planification & Degré d'Urgence", en: "9. Schedule & Urgency Level", ru: "9. Выбор срочности и времени" },
+            subtitle: { fr: "Choix entre urgence immédiate (ASAP) ou rdv programmé", en: "Choosing emergency immediate visit vs scheduled time slot", ru: "Выбор между срочным выездом (ASAP) и записью на время" },
+            action: { fr: "Sélectionnez le mode 'ASAP Emergency'", en: "Keep 'ASAP Emergency' toggle ON", ru: "Выберите режим срочного вызова 'ASAP Emergency'" },
+            targetPos: { top: "35%", left: "50%" },
+            script: {
+                fr: "Le client choisit la priorité d'intervention : urgence immédiate (arrivée sous 15-30 mins) ou rendez-vous planifié dans la semaine.",
+                en: "Clients pick urgency: ASAP emergency dispatch for immediate response within minutes, or scheduled appointment for later.",
+                ru: "Клиент выбирает приоритет вызова: экстренный выезд ASAP (мастер выезжает сразу) или запланированный визит в удобный день."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col justify-between bg-slate-900 p-3 rounded-2xl text-slate-100">
+            <div>
+              <div class="text-[10px] uppercase font-bold text-brand-teal mb-2">Step 3: When Needed?</div>
+              <div class="p-1 rounded-xl bg-slate-950 border border-slate-800 grid grid-cols-2 gap-1 mb-3">
+                <div class="py-2 rounded-lg bg-brand-emerald text-slate-950 font-extrabold text-center text-xs shadow">⚡ ASAP Now</div>
+                <div class="py-2 rounded-lg text-slate-400 font-bold text-center text-xs">📅 Schedule</div>
+              </div>
+              <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+                <div>
+                  <div class="text-xs font-bold text-white">🚨 Priority Emergency</div>
+                  <div class="text-[9px] text-slate-400">Guaranteed dispatch &lt; 30 mins</div>
+                </div>
+                <span class="w-8 h-4 bg-brand-emerald rounded-full flex items-center justify-end px-0.5"><span class="w-3 h-3 bg-white rounded-full"></span></span>
+              </div>
+            </div>
+            <button class="w-full py-2.5 rounded-xl bg-brand-emerald text-slate-950 font-extrabold text-xs shadow-md">Next Step →</button>
+          </div>
+        `
+        },
+        {
+            id: 10,
+            category: "Callout Payment",
+            title: { fr: "10. Mode de Paiement du Déplacement", en: "10. Diagnostic Fee Payment Choice", ru: "10. Оплата вызова и диагностики" },
+            subtitle: { fr: "Validation des frais de diagnostic (70.00 €) par carte ou espèces", en: "Selecting card or cash for fixed diagnostic callout fee (70 €)", ru: "Выбор оплаты фиксированного вызова (70 €) картой или наличными" },
+            action: { fr: "Sélectionnez 'Card •••• 4242' et continuez", en: "Select saved 'Card •••• 4242'", ru: "Выберите привязанную карту 'Card •••• 4242'" },
+            targetPos: { top: "45%", left: "50%" },
+            script: {
+                fr: "L'application transparentise la tarification : les frais de déplacement et diagnostic de 70 € sont pré-autorisés sur carte ou payables en cash.",
+                en: "Transparent pricing upfront: the fixed €70 callout & inspection fee is pre-authorized on credit card or cash upon arrival.",
+                ru: "Прозрачная фиксированная плата за первичный выезд и диагностику (70 €). Клиент выбирает удобный способ оплаты."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col justify-between bg-slate-900 p-3 rounded-2xl text-slate-100">
+            <div>
+              <div class="text-[10px] uppercase font-bold text-brand-teal mb-2">Step 4: Diagnostic Fee</div>
+              <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 mb-3 text-center">
+                <div class="text-[10px] text-slate-400">Fixed Callout & Inspection Fee</div>
+                <div class="text-2xl font-black text-brand-emerald">70,00 €</div>
+              </div>
+              <div class="space-y-2">
+                <div class="p-2.5 rounded-xl bg-brand-teal/20 border-2 border-brand-teal flex items-center justify-between">
+                  <span class="text-xs font-bold text-white">💳 Pay by Card</span>
+                  <span class="text-brand-teal font-extrabold text-xs">•••• 4242</span>
+                </div>
+                <div class="p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between text-slate-400">
+                  <span class="text-xs font-bold">💵 Cash to Worker</span>
+                  <span class="text-xs font-bold">💶</span>
+                </div>
+              </div>
+            </div>
+            <button class="w-full py-2.5 rounded-xl bg-brand-emerald text-slate-950 font-extrabold text-xs shadow-md">Confirm Payment Method</button>
+          </div>
+        `
+        },
+        {
+            id: 11,
+            category: "Order Submission",
+            title: { fr: "11. Description & Photos du Chantier", en: "11. Problem Notes & Photo Upload", ru: "11. Описание проблемы и фото" },
+            subtitle: { fr: "Description textuelle et ajout de photos des dégâts", en: "Attaching custom notes & uploading damage inspection photos", ru: "Загрузка фотографий повреждений и примечание" },
+            action: { fr: "Appuyez sur le bouton 'Create Order'", en: "Tap green 'Create Order' button", ru: "Нажмите кнопку 'Create Order' для отправки" },
+            targetPos: { top: "82%", left: "50%" },
+            script: {
+                fr: "Dernière étape avant l'envoi : le client rédige une note explicative et ajoute jusqu'à 5 photos. Cliquez sur 'Create Order'.",
+                en: "Final step before submission: customer adds written notes and uploads photos. Tapping 'Create Order' broadcasts the job request.",
+                ru: "Заключительный шаг: клиент добавляет описание и фотографии поломки. Нажмите 'Create Order' для публикации заявки."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col justify-between bg-slate-900 p-3 rounded-2xl text-slate-100">
+            <div>
+              <div class="text-[10px] uppercase font-bold text-brand-teal mb-2">Step 5: Notes & Photos</div>
+              <div class="p-2.5 rounded-xl bg-slate-950 border border-slate-800 mb-2">
+                <p class="text-xs text-slate-300 italic">"Short circuit in kitchen outlet, sparked when plugging kettle."</p>
+              </div>
+              <div class="flex gap-2 mb-3">
+                <div class="w-14 h-14 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-xs text-slate-300">📷 Photo 1</div>
+                <div class="w-14 h-14 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-xs text-slate-300">📷 Photo 2</div>
+              </div>
+            </div>
+            <button class="w-full py-2.5 rounded-xl bg-brand-emerald text-slate-950 font-black text-xs shadow-md uppercase">Create Order</button>
+          </div>
+        `
+        },
+        {
+            id: 12,
+            category: "Matching Radar",
+            title: { fr: "12. Recherche d'Artisan à Proximité", en: "12. Real-Time Radar Matching", ru: "12. Поиск близлежащего мастера" },
+            subtitle: { fr: "Système algorithmique de matching géolocalisé", en: "Algorithmic matching broadcasting request to closest certified pros", ru: "Алгоритмический поиск ближайшего квалифицированного специалиста" },
+            action: { fr: "Patientez pendant la recherche d'artisan", en: "Wait for matching response animation", ru: "Подождите несколько секунд во время поиска" },
+            targetPos: { top: "50%", left: "50%" },
+            script: {
+                fr: "Le radar Byfro analyse les artisans disponibles dans un rayon de 5 km et transmet l'ordre au spécialiste le mieux noté.",
+                en: "The Byfro matching engine scans certified specialists within a 5km radius and dispatches to the optimal nearest worker.",
+                ru: "Алгоритм Byfro сканирует свободных мастеров в радиусе 5 км и предлагает заказ наилучшему специалисту."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col items-center justify-center bg-slate-900 p-4 rounded-2xl text-center">
+            <div class="w-16 h-16 rounded-full border-4 border-brand-teal border-t-transparent animate-spin mb-4 flex items-center justify-center text-xl">
+              ⚡
+            </div>
+            <div class="font-extrabold text-sm text-white mb-1">Searching Certified Master...</div>
+            <p class="text-[10px] text-slate-400">Connecting with closest electrician near Sheram St</p>
+          </div>
+        `
+        },
+        {
+            id: 13,
+            category: "Live Tracking",
+            hasAnimatedMap: true,
+            mapType: "client_tracking",
+            title: { fr: "13. Suivi GPS du Spécialiste en Direct", en: "13. Real-Time Driver Tracking & ETA", ru: "13. Интерактивное отслеживание мастера на карте" },
+            subtitle: { fr: "Suivi en temps réel sur carte de l'artisan en route avec ETA", en: "Live map showing master location, car route, and exact ETA", ru: "Интерактивная карта движения мастера в реальном времени с live-маршрутом" },
+            action: { fr: "Suivez l'arrivée de Vahe S. sur la carte", en: "Observe live ETA (&lt; 1 min / 37m)", ru: "Следите за машиной мастера на анимированной карте" },
+            targetPos: { top: "68%", left: "50%" },
+            script: {
+                fr: "Une fois la mission acceptée, le client voit le nom de l'artisan (Vahe S.), sa note (4.9) et sa progression GPS en temps réel.",
+                en: "Once accepted, customers monitor worker profile, rating (4.9 stars), contact options, and exact real-time GPS driving route.",
+                ru: "После назначения мастера клиент видит карточку специалиста (Vahe S., 4.9⭐) и его реальное движение по карте к объекту."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col justify-between bg-slate-950 p-2 rounded-2xl relative overflow-hidden">
+            <!-- CANVAS ANIMATED MAP FOR CLIENT TRACKING -->
+            <div class="absolute inset-0 bg-slate-900">
+              <canvas id="animated-map-canvas" class="w-full h-full block"></canvas>
+            </div>
+
+            <!-- TOP MASTER PROFILE BAR -->
+            <div class="p-2 bg-slate-900/90 backdrop-blur rounded-xl border border-slate-800 flex items-center justify-between text-xs z-10 shadow-lg">
+              <div class="flex items-center gap-2">
+                <span class="w-7 h-7 rounded-full bg-brand-emerald text-slate-950 font-bold flex items-center justify-center">V</span>
+                <div>
+                  <div class="font-bold text-white">Vahe S.</div>
+                  <div class="text-[9px] text-slate-400">Electrician ⭐ 4.9</div>
+                </div>
+              </div>
+              <span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 font-mono text-[10px] border border-emerald-800 animate-pulse">Driving to you</span>
+            </div>
+
+            <!-- BOTTOM LIVE TELEMETRY DRAWER -->
+            <div class="z-10 p-3 bg-slate-900/95 backdrop-blur rounded-xl border border-slate-800 shadow-2xl space-y-1.5">
+              <div class="flex justify-between items-center">
+                <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Estimated Arrival</span>
+                <span id="map-live-speed" class="text-[10px] font-mono text-brand-teal">Speed: 38 km/h</span>
+              </div>
+              <div class="flex justify-between items-baseline">
+                <div id="map-live-eta" class="text-lg font-black text-brand-teal">ETA 1 min 20s</div>
+                <div id="map-live-dist" class="text-xs font-mono text-slate-300 font-bold">140 m</div>
+              </div>
+            </div>
+          </div>
+        `
+        },
+        {
+            id: 14,
+            category: "Quote Review",
+            title: { fr: "14. Devis Détaillé & Approbation", en: "14. Itemized Quote & Approval", ru: "14. Согласование детализированной сметы" },
+            subtitle: { fr: "Réception du devis établi par l'artisan après diagnostic", en: "Reviewing labor vs spare parts costs before approving work", ru: "Проверка стоимости работ и деталей перед началом ремонта" },
+            action: { fr: "Appuyez sur 'Approve and Pay'", en: "Tap green 'Approve and Pay (530 €)'", ru: "Нажмите зеленый кнопку 'Approve and Pay (530 €)'" },
+            targetPos: { top: "78%", left: "50%" },
+            script: {
+                fr: "Après l'inspection initiale, l'artisan soumet un devis détaillé (main d'œuvre + pièces). Le client approuve directement depuis son écran.",
+                en: "Following diagnosis, the specialist inputs exact costs for labor and replacement components. The customer inspects and approves instantly.",
+                ru: "После осмотра мастер отправляет детальную смету (работа + запчасти). Клиент проверяет позиции и подтверждает выполнение."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col justify-between bg-slate-900 p-3 rounded-2xl text-slate-100">
+            <div>
+              <div class="font-extrabold text-xs text-white mb-2">Quote Submitted for Approval</div>
+              <div class="space-y-1.5 bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-xs mb-2">
+                <div class="flex justify-between text-slate-300"><span>Work Labor</span><span class="font-mono font-bold text-white">500,00 €</span></div>
+                <div class="flex justify-between text-slate-300"><span>Replacement Socket</span><span class="font-mono font-bold text-white">30,00 €</span></div>
+                <div class="border-t border-slate-800 pt-1 flex justify-between font-bold text-brand-emerald"><span>Total Price</span><span>530,00 €</span></div>
+              </div>
+            </div>
+            <div class="space-y-1.5">
+              <button class="w-full py-2.5 rounded-xl bg-brand-emerald text-slate-950 font-black text-xs">Approve and Pay (530 €)</button>
+              <button class="w-full py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 font-bold text-xs">Decline Quote</button>
+            </div>
+          </div>
+        `
+        },
+        {
+            id: 15,
+            category: "Execution Phase",
+            title: { fr: "15. Travaux en Cours & Appels", en: "15. Work In Progress & In-App Call", ru: "15. Выполнение работ и связь" },
+            subtitle: { fr: "Suivi de l'exécution et bouton d'appel direct", en: "Live progress state during repair with call/chat actions", ru: "Статус выполнения ремонта с возможностью звонка мастеру" },
+            action: { fr: "Travaux en cours d'exécution", en: "Monitor 'In Progress' status", ru: "Работы выполняются мастером" },
+            targetPos: { top: "50%", left: "50%" },
+            script: {
+                fr: "L'artisan effectue les réparations. Le client garde le contrôle via des boutons d'appel direct ou de chat sécurisé.",
+                en: "While repair work is active, the app displays live progress status and offers quick call buttons for communication.",
+                ru: "В процессе ремонта на экране отображается статус выполнения. Клиент всегда может позвонить мастеру через приложение."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col justify-between bg-slate-900 p-3 rounded-2xl text-slate-100">
+            <div class="text-center pt-4">
+              <div class="w-12 h-12 mx-auto rounded-full bg-brand-teal/20 border-2 border-brand-teal text-brand-teal flex items-center justify-center text-xl mb-2">⚡</div>
+              <div class="font-black text-sm text-white">Repair Work In Progress</div>
+              <p class="text-[10px] text-slate-400 mt-1">Vahe S. is replacing broken electrical socket</p>
+            </div>
+            <div class="flex gap-2">
+              <button class="flex-1 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-slate-300">📞 Call Master</button>
+              <button class="flex-1 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-slate-300">💬 Chat</button>
+            </div>
+          </div>
+        `
+        },
+        {
+            id: 16,
+            category: "Completion & Review",
+            title: { fr: "16. Reception, Facture & Évaluation", en: "16. Job Acceptance, Invoice & Review", ru: "16. Приемка работ, чек и отзыв" },
+            subtitle: { fr: "Validation finale du travail accompli et notation par étoiles", en: "Final inspection acceptance, digital receipt, and 5-star rating", ru: "Подтверждение приемки работ, получение чека и оценка 5 звезд" },
+            action: { fr: "Donnez 5 étoiles et cliquez sur 'Submit'", en: "Select 5 stars and tap 'Submit'", ru: "Поставьте 5 звезд и нажмите 'Submit'" },
+            targetPos: { top: "78%", left: "50%" },
+            script: {
+                fr: "Une fois l'intervention achevée, le client inspecte le résultat, reçoit sa facture électronique et laisse une note d'évaluation.",
+                en: "Upon completion, the customer inspects the repaired socket, receives a PDF receipt, and submits a 5-star performance review.",
+                ru: "По завершении клиент проверяет работу, получает электронный чек в историю заказов и ставит 5 звезд мастеру."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col justify-between bg-slate-900 p-3 rounded-2xl text-slate-100">
+            <div>
+              <div class="font-extrabold text-xs text-white mb-1 text-center">Job Completed Successfully!</div>
+              <p class="text-[10px] text-slate-400 text-center mb-3">Total Paid: 600,00 € (Callout + Repair)</p>
+              <div class="flex justify-center gap-1.5 text-xl mb-3">⭐⭐⭐⭐⭐</div>
+              <textarea disabled class="w-full h-16 bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-slate-300 italic">Excellent service! Replaced socket quickly and safely.</textarea>
+            </div>
+            <button class="w-full py-2.5 rounded-xl bg-brand-emerald text-slate-950 font-extrabold text-xs">Submit Rating & Close</button>
+          </div>
+        `
+        }
+    ];
+
+    // WORKER / SPECIALIST APP SLIDES DATA (16 DETAILED STEPS)
+    const workerSlides = [
+        {
+            id: 1,
+            category: "Status Readiness",
+            title: { fr: "1. Prise de Service (Online Toggle)", en: "1. Shift Start & Online Switch", ru: "1. Переключение статуса 'Online'" },
+            subtitle: { fr: "Passage de l'artisan en mode disponible pour recevoir des ordres", en: "Toggling Online status to register active shift on radar", ru: "Включение режима готовности к приему заказов на смене" },
+            action: { fr: "Activez le bouton 'Online' en haut à droite", en: "Switch top toggle to 'Online'", ru: "Переведите переключатель в положение 'Online'" },
+            targetPos: { top: "18%", left: "70%" },
+            script: {
+                fr: "Pour commencer à recevoir des offres de dépannage, le spécialiste active le bouton 'Online' dans le coin supérieur droit.",
+                en: "To start receiving job offers nearby, specialists toggle their top status bar to 'Online' when starting their working shift.",
+                ru: "Чтобы начать получать заказы неподалеку, мастер переключает тумблер в верхней панели в положение 'Online'."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col justify-between bg-slate-950 p-3 rounded-2xl text-slate-100">
+            <div class="flex items-center justify-between bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+              <span class="font-bold text-xs text-white">Shift Status: ONLINE</span>
+              <span class="w-9 h-5 bg-brand-emerald rounded-full flex items-center justify-end px-0.5"><span class="w-4 h-4 bg-white rounded-full"></span></span>
+            </div>
+            <div class="space-y-1.5 bg-slate-900 p-3 rounded-xl border border-slate-800 text-xs">
+              <div class="flex justify-between"><span>SHIFT STATUS:</span><span class="text-brand-emerald font-bold">Active Online</span></div>
+              <div class="flex justify-between"><span>GPS LOCATION:</span><span class="text-brand-emerald font-bold">Verified</span></div>
+              <div class="flex justify-between"><span>ELIGIBILITY:</span><span class="text-brand-emerald font-bold">Ready for Jobs</span></div>
+            </div>
+            <div class="p-2 bg-slate-900/50 rounded-xl border border-slate-800 text-center text-[10px] text-slate-400">
+              Stay online to receive high-priority dispatch offers
+            </div>
+          </div>
+        `
+        },
+        {
+            id: 2,
+            category: "Status Readiness",
+            title: { fr: "2. Verification des Permissions & GPS", en: "2. GPS Readiness & Wallet Check", ru: "2. Проверка GPS и баланса кошелька" },
+            subtitle: { fr: "Contrôle automatique du solde portefeuille et du signal GPS", en: "System verification of GPS permissions and minimum balance eligibility", ru: "Проверка разрешений геолокации и баланса для комиссии" },
+            action: { fr: "Vérifiez que tous les indicateurs sont au vert", en: "Ensure all status badges show 'Green'", ru: "Убедитесь, что все показатели горат зеленым" },
+            targetPos: { top: "35%", left: "50%" },
+            script: {
+                fr: "L'application vérifie automatiquement la précision de la géolocalisation et que le solde du portefeuille est suffisant pour couvrir la commission.",
+                en: "The system automatically verifies high-accuracy GPS tracking and ensures wallet balance is sufficient for platform fees.",
+                ru: "Приложение автоматически проверяет сигнал GPS и положительный баланс кошелька для списания комиссии сервиса."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col justify-between bg-slate-950 p-3 rounded-2xl text-slate-100">
+            <div class="font-extrabold text-xs text-white mb-2">System Diagnostic</div>
+            <div class="space-y-2">
+              <div class="p-2 bg-slate-900 rounded-xl border border-emerald-800/60 flex items-center justify-between text-xs">
+                <span>📍 GPS High Precision</span>
+                <span class="text-brand-emerald font-bold">OK (3m)</span>
+              </div>
+              <div class="p-2 bg-slate-900 rounded-xl border border-emerald-800/60 flex items-center justify-between text-xs">
+                <span>💰 Wallet Balance</span>
+                <span class="text-brand-emerald font-bold">960,00 €</span>
+              </div>
+            </div>
+            <button class="w-full py-2.5 rounded-xl bg-brand-emerald text-slate-950 font-extrabold text-xs">System Ready</button>
+          </div>
+        `
+        },
+        {
+            id: 3,
+            category: "Incoming Offer",
+            title: { fr: "3. Notification d'Ordre Involontaire", en: "3. Live Incoming Order Alert", ru: "3. Всплывающее окно нового заказа" },
+            subtitle: { fr: "Alerte sonore et compte à rebours de 30 secondes pour accepter", en: "Incoming job pop-up with 30-second timer and key details", ru: "Экран поступившей заявки с таймером на 30 секунд" },
+            action: { fr: "Appuyez sur le bouton vert 'Accept'", en: "Tap green 'Accept' button", ru: "Нажмите зеленую кнопку 'Accept'" },
+            targetPos: { top: "68%", left: "70%" },
+            script: {
+                fr: "Quand une commande est attribuée, un écran d'alerte apparaît avec l'adresse et le problème. L'artisan a 30 secondes pour cliquer sur 'Accept'.",
+                en: "When a dispatch arrives, a high-priority alert displays address and job notes with a 30-second countdown timer.",
+                ru: "При поступлении заказа появляется всплывающее окно с адресом и проблемой. У мастера есть 30 секунд для нажатия 'Accept'."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col justify-center bg-slate-950 p-3 rounded-2xl">
+            <div class="bg-slate-900 border-2 border-brand-teal p-4 rounded-2xl text-center space-y-2.5">
+              <span class="text-2xl animate-bounce inline-block">⚡</span>
+              <div class="font-black text-sm text-white">New Dispatch Offer!</div>
+              <div class="text-xs text-slate-300 font-bold">Electrical Short Circuit</div>
+              <div class="text-[10px] text-slate-400">📍 111 Gusan Sheram St (1.2 km away)</div>
+              <div class="text-xs font-mono font-bold text-brand-teal">Expires in: 24s</div>
+              <div class="flex gap-2 pt-1">
+                <button class="flex-1 py-2 rounded-xl bg-slate-800 text-slate-400 font-bold text-xs">Decline</button>
+                <button class="flex-1 py-2 rounded-xl bg-brand-emerald text-slate-950 font-black text-xs shadow-lg">Accept Order</button>
+              </div>
+            </div>
+          </div>
+        `
+        },
+        {
+            id: 4,
+            category: "Order Acceptance",
+            title: { fr: "4. Fiche Détails du Ordre Accepté", en: "4. Assigned Order Specification", ru: "4. Карточка принятого заказа" },
+            subtitle: { fr: "Consultation du tarif de déplacement (70 €) et des photos client", en: "Reviewing callout fee (€70) and attached client photos", ru: "Детали заказа: выезд (70 €) и прикрепленные фото клиента" },
+            action: { fr: "Examinez les photos et cliquez sur 'Navigate'", en: "Inspect photos and tap 'Start Navigation'", ru: "Просмотрите фото и нажмите 'Start Navigation'" },
+            targetPos: { top: "78%", left: "50%" },
+            script: {
+                fr: "Une fois la mission acceptée, la fiche complète affiche le tarif du déplacement (70 €) et les photos fournies par le client.",
+                en: "After accepting, the specialist opens the order card to view the guaranteed €70 callout fee and client inspection photos.",
+                ru: "После принятия заказа открывается подробная карточка: здесь указана гарантированная плата за выезд (70 €) и фотографии."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col justify-between bg-slate-950 p-3 rounded-2xl text-slate-100">
+            <div>
+              <div class="flex justify-between items-center mb-2">
+                <span class="font-extrabold text-xs text-white">Order #112</span>
+                <span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 text-[10px] font-bold border border-emerald-800">Assigned</span>
+              </div>
+              <div class="p-2.5 bg-slate-900 rounded-xl border border-slate-800 mb-2">
+                <div class="text-[10px] text-slate-400">Guaranteed Callout Fee</div>
+                <div class="text-sm font-bold text-brand-emerald">70,00 €</div>
+              </div>
+              <div class="text-[10px] uppercase font-bold text-slate-400 mb-1">Client Inspection Photos</div>
+              <div class="flex gap-1.5">
+                <div class="w-12 h-12 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px]">🖼️ 1</div>
+                <div class="w-12 h-12 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px]">🖼️ 2</div>
+              </div>
+            </div>
+            <button class="w-full py-2.5 rounded-xl bg-brand-teal text-slate-950 font-extrabold text-xs shadow-md">Start Navigation →</button>
+          </div>
+        `
+        },
+        {
+            id: 5,
+            category: "Navigation Drive",
+            hasAnimatedMap: true,
+            mapType: "worker_nav",
+            title: { fr: "5. Guidage GPS & Navigation Интерактивная", en: "5. Turn-by-Turn Animated GPS Navigation", ru: "5. Интерактивная навигация и маршрут к клиенту" },
+            subtitle: { fr: "Trajet guidé vers l'adresse d'intervention avec animations GPS", en: "Real-time driving route calculation to target customer address", ru: "Построение динамического маршрута поездки и GPS-навигация к клиенту" },
+            action: { fr: "Suivez le trajet GPS vers le chantier", en: "Follow GPS route (< 1 min drive)", ru: "Следите за движением автомобиля по зеленой линии маршрута" },
+            targetPos: { top: "45%", left: "50%" },
+            script: {
+                fr: "L'application déclenche le guidage GPS vers l'adresse du client et transmet en direct la position du véhicule sur l'application client.",
+                en: "Integrated GPS navigation directs the specialist along the fastest route while streaming live location updates to the client.",
+                ru: "Навигатор прокладывает оптимальный маршрут к объекту, показывает повороты, скорость движения и транслирует геолокацию клиенту."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col justify-between bg-slate-950 p-2 rounded-2xl relative overflow-hidden">
+            <!-- CANVAS ANIMATED MAP FOR WORKER NAVIGATION -->
+            <div class="absolute inset-0 bg-slate-950">
+              <canvas id="animated-map-canvas" class="w-full h-full block"></canvas>
+            </div>
+
+            <!-- TOP TURN-BY-TURN NAV HEADER -->
+            <div class="p-2.5 bg-slate-900/90 backdrop-blur rounded-xl border border-brand-emerald/50 text-white z-10 shadow-xl flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-brand-emerald text-slate-950 font-black text-lg flex items-center justify-center shrink-0">
+                ↗
+              </div>
+              <div>
+                <div class="text-[10px] text-slate-400 uppercase font-bold">In 50 meters</div>
+                <div class="text-xs font-black text-white">Turn right on Gusan Sheram St</div>
+              </div>
+            </div>
+
+            <!-- BOTTOM TELEMETRY BAR -->
+            <div class="z-10 p-2.5 bg-slate-900/95 backdrop-blur rounded-xl border border-slate-800 text-xs font-mono space-y-1">
+              <div class="flex justify-between items-center text-[10px]">
+                <span class="text-slate-400">Target Address</span>
+                <span class="text-brand-emerald font-bold">111 Gusan Sheram St</span>
+              </div>
+              <div class="flex justify-between items-center border-t border-slate-800 pt-1">
+                <div><span class="text-slate-400 text-[9px]">Speed:</span> <span id="map-live-speed" class="text-white font-bold">34 km/h</span></div>
+                <div><span class="text-slate-400 text-[9px]">Distance:</span> <span id="map-live-dist" class="text-brand-teal font-bold">120 m</span></div>
+                <div><span class="text-slate-400 text-[9px]">ETA:</span> <span id="map-live-eta" class="text-emerald-400 font-bold">0:45</span></div>
+              </div>
+            </div>
+          </div>
+        `
+        },
+        {
+            id: 6,
+            category: "On-Site Arrival",
+            title: { fr: "6. Arrivée sur Place (Check-in)", en: "6. On-Site Arrival Confirmation", ru: "6. Подтверждение прибытия на объект" },
+            subtitle: { fr: "Validation du point d'arrivée pour démarrer le diagnostic", en: "Arrived at location check-in to unlock inspection mode", ru: "Отметка о прибытии на место для перехода к осмотру" },
+            action: { fr: "Appuyez sur 'Start inspection'", en: "Tap 'Start inspection' upon arrival", ru: "Нажмите кнопку 'Start inspection'" },
+            targetPos: { top: "75%", left: "50%" },
+            script: {
+                fr: "Une fois arrivé sur les lieux, l'artisan clique sur 'Start inspection' pour notifier le client et démarrer le diagnostic.",
+                en: "Upon arrival at the building, tapping 'Start inspection' notifies the customer and opens the diagnostic quote builder.",
+                ru: "По прибытии на адрес мастер нажимает кнопку 'Start inspection', открывая режим технического осмотра."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col justify-between bg-slate-950 p-3 rounded-2xl">
+            <div class="p-3 bg-emerald-950/60 border border-emerald-800/80 rounded-xl text-center">
+              <div class="text-[10px] text-emerald-300 font-bold">📍 Arrived at 111 Gusan Sheram St</div>
+              <div class="text-xs text-white font-black mt-0.5">Ready for Physical Inspection</div>
+            </div>
+            <button class="w-full py-3 rounded-xl bg-brand-emerald text-slate-950 font-black text-xs shadow-md uppercase">Start Inspection</button>
+          </div>
+        `
+        },
+        {
+            id: 7,
+            category: "Diagnostic Mode",
+            title: { fr: "7. Diagnostic & Constat des Dégâts", en: "7. Diagnostic Mode & Physical Exam", ru: "7. Осмотр и диагностика поломки" },
+            subtitle: { fr: "Inspection technique de la panne et relevé des pièces", en: "Technician inspecting wiring, sockets, and calculating required labor", ru: "Осмотр электропроводки и выбор необходимых компонентов" },
+            action: { fr: "Effectuez le contrôle technique", en: "Perform physical equipment diagnostic", ru: "Проведите осмотр оборудования" },
+            targetPos: { top: "50%", left: "50%" },
+            script: {
+                fr: "Pendant la phase de diagnostic, l'artisan examine l'installation électrique et calcule précisément les heures de travail et fournitures.",
+                en: "During diagnostic mode, the technician examines the faulty electrical circuit to accurately compute required labor and replacement parts.",
+                ru: "Мастер проводит технический осмотр поломки для точно расчета стоимости работ и необходимых деталей."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col justify-between bg-slate-950 p-3 rounded-2xl text-slate-100">
+            <div>
+              <div class="font-extrabold text-xs text-white mb-2">Diagnostic Phase Active</div>
+              <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 text-xs space-y-1.5">
+                <div class="flex justify-between text-slate-300"><span>Target:</span><span class="text-white font-bold">Kitchen Outlet</span></div>
+                <div class="flex justify-between text-slate-300"><span>Issue:</span><span class="text-red-400 font-bold">Melted Wire Insulation</span></div>
+                <div class="flex justify-between text-slate-300"><span>Action:</span><span class="text-brand-teal font-bold">Replace Socket & Wiring</span></div>
+              </div>
+            </div>
+            <button class="w-full py-2.5 rounded-xl bg-brand-teal text-slate-950 font-extrabold text-xs">Build Quote Form →</button>
+          </div>
+        `
+        },
+        {
+            id: 8,
+            category: "Quote Builder",
+            title: { fr: "8. Établissement du Devis Interactif", en: "8. Interactive Quote Form Builder", ru: "8. Составление сметы работ и запчастей" },
+            subtitle: { fr: "Saisie de la main d'œuvre (500 €) et des matériaux (30 €)", en: "Entering labor amount (€500) and material costs (€30)", ru: "Ввод стоимости работ (500 €) и материалов (30 €)" },
+            action: { fr: "Saisissez les montants et validez", en: "Enter amounts and tap 'Submit Quote'", ru: "Укажите суммы и нажмите 'Submit Quote'" },
+            targetPos: { top: "80%", left: "50%" },
+            script: {
+                fr: "L'artisan remplit le formulaire de devis numérique : 500 € de main d'œuvre + 30 € de matériel. Il clique ensuite sur 'Submit Quote'.",
+                en: "The specialist inputs itemized values into the quote builder: €500 for specialized labor plus €30 for parts, then taps 'Submit Quote'.",
+                ru: "Мастер заполняет цифровую смету: 500 € за работу + 30 € за материалы. Нажатие 'Submit Quote' отправляет расчет клиенту."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col justify-between bg-slate-950 p-3 rounded-2xl text-slate-100">
+            <div>
+              <div class="font-extrabold text-xs text-white mb-2">Create Quote for Client</div>
+              <div class="space-y-2">
+                <div>
+                  <label class="text-[9px] text-slate-400 font-bold">Work Labor Amount (EUR)</label>
+                  <input disabled value="500,00 €" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-xs text-white font-mono font-bold">
+                </div>
+                <div>
+                  <label class="text-[9px] text-slate-400 font-bold">Materials / Parts (EUR)</label>
+                  <input disabled value="30,00 €" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-xs text-white font-mono font-bold">
+                </div>
+              </div>
+            </div>
+            <button class="w-full py-2.5 rounded-xl bg-brand-emerald text-slate-950 font-extrabold text-xs shadow-md">Submit Quote to Client</button>
+          </div>
+        `
+        },
+        {
+            id: 9,
+            category: "Awaiting Approval",
+            title: { fr: "9. Attente de Confirmation Client", en: "9. Awaiting Client Confirmation", ru: "9. Ожидание подтверждения клиентом" },
+            subtitle: { fr: "Patienter la validation du devis par le client sur son écran", en: "Real-time state waiting for client to accept quote on phone", ru: "Экран ожидания согласия клиента с предложенной сметой" },
+            action: { fr: "Attendez la confirmation du client", en: "Wait for client approval push update", ru: "Ожидайте ответа клиента" },
+            targetPos: { top: "50%", left: "50%" },
+            script: {
+                fr: "Le devis est transmis instantanément sur le téléphone du client. L'écran affiche l'attente jusqu'à la validation du montant.",
+                en: "The quote is pushed directly to the client's screen. The specialist application holds in waiting mode until approval.",
+                ru: "Смета отправлена на смартфон клиента. Приложение мастера ожидает подтверждения сметы со стороны заказчика."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col items-center justify-center bg-slate-950 p-4 rounded-2xl text-center">
+            <div class="w-12 h-12 rounded-full border-2 border-brand-teal animate-pulse flex items-center justify-center text-xl mb-3">⏳</div>
+            <div class="font-bold text-xs text-white">Quote Pushed to Client</div>
+            <p class="text-[10px] text-slate-400 mt-1">Waiting for customer to accept 530,00 € total price...</p>
+          </div>
+        `
+        },
+        {
+            id: 10,
+            category: "Execution Phase",
+            title: { fr: "10. Lancement des Travaux (Start Work)", en: "10. Execution Work Authorization", ru: "10. Запуск выполнения ремонта" },
+            subtitle: { fr: "Devis approuvé ! Bouton vert pour démarrer le chrono", en: "Quote accepted notification enabling green 'Start Work' button", ru: "Смета принята! Активация кнопки 'Start Work'" },
+            action: { fr: "Appuyez sur le bouton vert 'Start Work'", en: "Tap green 'Start Work' button", ru: "Нажмите зеленую кнопку 'Start Work'" },
+            targetPos: { top: "72%", left: "50%" },
+            script: {
+                fr: "Dès que le client accepte le devis, une notification verte confirme la validation et débloque le bouton 'Start Work'.",
+                en: "Once approved, a green confirmation banner appears. Tapping 'Start Work' begins tracking repair execution time.",
+                ru: "После одобрения клиентом сметы загорается зеленый баннер. Нажмите 'Start Work' для начала ремонта."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col justify-between bg-slate-950 p-3 rounded-2xl">
+            <div class="p-3 bg-emerald-950/60 border border-emerald-800/80 rounded-xl text-center">
+              <div class="text-[10px] text-emerald-300 font-bold">✓ Quote Approved by Client (530 €)</div>
+              <div class="text-xs text-white font-black mt-0.5">Authorized to Begin Repair</div>
+            </div>
+            <button class="w-full py-3 rounded-xl bg-brand-emerald text-slate-950 font-black text-xs shadow-md uppercase">Start Work</button>
+          </div>
+        `
+        },
+        {
+            id: 11,
+            category: "Execution Phase",
+            title: { fr: "11. Modification / Ajout de Fournitures", en: "11. Pause or Extra Materials Request", ru: "11. Пауза и добавление материалов" },
+            subtitle: { fr: "Option d'ajout de pièces imprévues au devis en cours", en: "Optional feature to request approval for additional unexpected parts", ru: "Функция добавления дополнительных непередпредвиденных деталей" },
+            action: { fr: "Gérez les imponderables du chantier", en: "Use 'Add Extra Part' if needed", ru: "При необходимости используйте 'Add Extra Part'" },
+            targetPos: { top: "50%", left: "50%" },
+            script: {
+                fr: "Si une pièce supplémentaire est nécessaire au cours de l'intervention, l'artisan peut demander un avenant au devis.",
+                en: "In case hidden defects require extra replacement parts mid-repair, the specialist can submit an addendum request.",
+                ru: "Если в процессе ремонта выявились скрытые дефекты, мастер может запросить доплату за дополнительные детали."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col justify-between bg-slate-950 p-3 rounded-2xl text-slate-100">
+            <div>
+              <div class="font-extrabold text-xs text-white mb-2">Repair Execution Active</div>
+              <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 text-center">
+                <div class="text-[10px] text-slate-400">Execution Timer</div>
+                <div class="text-lg font-mono font-bold text-brand-teal">00:18:42</div>
+              </div>
+            </div>
+            <button class="w-full py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 text-xs font-bold">+ Add Extra Part / Scope Change</button>
+          </div>
+        `
+        },
+        {
+            id: 12,
+            category: "Completion",
+            title: { fr: "12. Finalisation & Clôture de la Mission", en: "12. Mark Order Completed", ru: "12. Завершение и закрытие заказа" },
+            subtitle: { fr: "Clôture des travaux et envoi de la demande de recette client", en: "Completing repair job and triggering customer inspection screen", ru: "Отметка о завершении ремонта и отправка на приемку" },
+            action: { fr: "Appuyez sur 'Complete Order'", en: "Tap green 'Complete Order' button", ru: "Нажмите кнопку 'Complete Order'" },
+            targetPos: { top: "75%", left: "50%" },
+            script: {
+                fr: "Une fois les réparations terminées, l'artisan clique sur 'Complete Order' pour inviter le client à faire la recette finale.",
+                en: "When all technical work is finished, tapping 'Complete Order' notifies the customer to perform final inspection.",
+                ru: "Завершив все работы, мастер нажимает 'Complete Order'. Клиент получает уведомление о готовности для приемки."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col justify-between bg-slate-950 p-3 rounded-2xl">
+            <div class="font-extrabold text-xs text-white">All Electrical Work Complete</div>
+            <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 text-xs text-slate-300">
+              Check all sockets and clean work area before closing order.
+            </div>
+            <button class="w-full py-3 rounded-xl bg-brand-emerald text-slate-950 font-black text-xs shadow-md uppercase">Complete Order</button>
+          </div>
+        `
+        },
+        {
+            id: 13,
+            category: "Settlement",
+            title: { fr: "13. Encaissement & Règlement Instantané", en: "13. Digital Settlement & Payment", ru: "13. Расчет и получение оплаты" },
+            subtitle: { fr: "Enregistrement automatique du règlement et génération du reçu", en: "Automated payment capture and digital receipt creation", ru: "Автоматическое списание оплаты и формирование чека" },
+            action: { fr: "Consultez le statut du règlement", en: "Observe 'Payment Collected' status", ru: "Проверьте статус 'Payment Collected'" },
+            targetPos: { top: "50%", left: "50%" },
+            script: {
+                fr: "L'application capture automatiquement le montant sur la carte du client (ou enregistre l'encaissement espèces). Le reçu est archivé.",
+                en: "The platform captures funds automatically from the customer's payment method and deposits net earnings into the worker's wallet.",
+                ru: "Система автоматически списывает средства с карты клиента и зачисляют заработок в кошелек мастера."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col justify-between bg-slate-950 p-3 rounded-2xl text-slate-100">
+            <div class="text-center pt-4">
+              <div class="w-12 h-12 mx-auto rounded-full bg-emerald-950 border-2 border-brand-emerald text-brand-emerald flex items-center justify-center text-xl mb-2">✓</div>
+              <div class="font-black text-sm text-white">Payment Successfully Collected</div>
+              <p class="text-[10px] text-slate-400 mt-1">Total: 600,00 € (Callout + Work + Parts)</p>
+            </div>
+            <div class="p-2.5 bg-slate-900 rounded-xl border border-slate-800 text-xs flex justify-between">
+              <span>Net Worker Share:</span>
+              <span class="font-mono font-bold text-brand-emerald">540,00 €</span>
+            </div>
+          </div>
+        `
+        },
+        {
+            id: 14,
+            category: "Financials & History",
+            title: { fr: "14. Dashboard des Gains & Statistiques", en: "14. Revenue & Order History Dashboard", ru: "14. Аналитика доходов и заказов" },
+            subtitle: { fr: "Synthèse des revenus nets, commissions et nombre de missions", en: "Comprehensive overview of daily earnings, completed jobs, and platform fee deductions", ru: "Сводка доходов, комиссии сервиса и количества выполненных заказов" },
+            action: { fr: "Examinez l'historique financier", en: "Review net earnings dashboard", ru: "Ознакомьтесь с финансовой аналитикой" },
+            targetPos: { top: "35%", left: "50%" },
+            script: {
+                fr: "L'onglet Historique permet à l'artisan de suivre son chiffre d'affaires quotidien, son revenu net et le détail des commissions prélevées.",
+                en: "The Analytics & History tab provides a transparent breakdown of total gross revenue, platform service fees, and net profit.",
+                ru: "Вкладка аналитики показывает детальный отчет: общую выручку, комиссию платформы и чистый доход мастера за день и месяц."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col bg-slate-950 p-3 rounded-2xl text-slate-100">
+            <div class="font-extrabold text-xs text-white mb-2">Earnings Dashboard</div>
+            <div class="grid grid-cols-2 gap-1.5 mb-3">
+              <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-center">
+                <div class="text-[9px] text-slate-400">Total Net Earned</div>
+                <div class="text-xs font-black text-brand-emerald">9 678 €</div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-center">
+                <div class="text-[9px] text-slate-400">Commission Paid</div>
+                <div class="text-xs font-black text-amber-400">240 €</div>
+              </div>
+            </div>
+            <div class="p-2 bg-slate-900 rounded-xl border border-slate-800 text-[10px] space-y-1">
+              <div class="flex justify-between"><span>Completed Jobs:</span><span class="font-bold text-white">42 orders</span></div>
+              <div class="flex justify-between"><span>Average Rating:</span><span class="font-bold text-brand-teal">⭐ 4.95</span></div>
+            </div>
+          </div>
+        `
+        },
+        {
+            id: 15,
+            category: "Wallet & TopUp",
+            title: { fr: "15. Portefeuille Spécialiste (Wallet)", en: "15. Specialist Wallet & Commission Balance", ru: "15. Кошелек мастера и баланс" },
+            subtitle: { fr: "Gestion du solde disponible pour retrait et de l'éligibilité", en: "Checking withdrawable balance and maintaining positive commission collateral", ru: "Управление доступным балансом и статусом готовности" },
+            action: { fr: "Vérifiez le solde disponible (960.00 €)", en: "Inspect withdrawable balance (€960.00)", ru: "Проверьте доступную сумму к выводу (960.00 €)" },
+            targetPos: { top: "45%", left: "50%" },
+            script: {
+                fr: "L'écran Portefeuille permet de vérifier le solde accumulé des missions et de recharger son compte si nécessaire pour conserver l'accès aux commandes.",
+                en: "The Wallet screen shows real-time available funds ready for withdrawal and maintains eligibility criteria for job matching.",
+                ru: "В кошельке мастер видит доступную сумму денег, заработанную за выполненные вызовы, и может пополнить баланс комиссии."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col justify-between bg-slate-950 p-3 rounded-2xl text-slate-100">
+            <div>
+              <div class="text-[10px] uppercase font-bold text-slate-400 mb-1">Available Wallet Balance</div>
+              <div class="text-2xl font-black text-brand-emerald mb-3">960,00 €</div>
+              <div class="p-2 bg-slate-900 rounded-xl border border-slate-800 text-[10px] space-y-1">
+                <div class="flex justify-between"><span>Ready for Payout:</span><span class="font-bold text-white">960,00 €</span></div>
+                <div class="flex justify-between"><span>Dispatch Eligibility:</span><span class="text-emerald-400 font-bold">Active / OK</span></div>
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <button class="flex-1 py-2 rounded-xl bg-slate-900 border border-slate-800 font-bold text-xs text-white">Top Up</button>
+              <button class="flex-1 py-2 rounded-xl bg-brand-emerald text-slate-950 font-black text-xs">Request Payout →</button>
+            </div>
+          </div>
+        `
+        },
+        {
+            id: 16,
+            category: "Payouts",
+            title: { fr: "16. Demande de Virement Bancaire", en: "16. Bank Card Instant Withdrawal", ru: "16. Вывод средств на банковскую карту" },
+            subtitle: { fr: "Transfert immédiat des gains vers la carte bancaire de l'artisan", en: "Requesting instant payout transfer to registered personal bank card", ru: "Мгновенный перевод заработанных денег на личную карту" },
+            action: { fr: "Saisissez le montant et appuyez sur 'Withdraw'", en: "Enter payout amount and tap 'Request Withdrawal'", ru: "Укажите сумму и нажмите 'Request Withdrawal'" },
+            targetPos: { top: "78%", left: "50%" },
+            script: {
+                fr: "Pour transférer ses gains vers son compte bancaire, l'artisan indique le montant souhaité en euros et clique sur 'Request Withdrawal'.",
+                en: "To cash out earnings, specialists enter the desired EUR amount and confirm instant payout directly to their registered bank card.",
+                ru: "Для вывода средств на банковскую карту мастер указывает сумму в евро и нажимает кнопку 'Request Withdrawal'."
+            },
+            renderMockup: () => `
+          <div class="h-full flex flex-col justify-between bg-slate-950 p-3 rounded-2xl text-slate-100">
+            <div>
+              <div class="font-extrabold text-xs text-white mb-2">Withdraw Funds to Card</div>
+              <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-800 space-y-2">
+                <div>
+                  <label class="text-[9px] text-slate-400 font-bold">Payout Amount (EUR)</label>
+                  <input disabled value="960.00" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs text-white font-mono font-bold">
+                </div>
+                <div class="text-[10px] text-slate-400">Destination: Saved Card •••• 8812</div>
+              </div>
+            </div>
+            <button class="w-full py-2.5 rounded-xl bg-brand-emerald text-slate-950 font-black text-xs shadow-md">Request Instant Withdrawal</button>
+          </div>
+        `
+        }
+    ];
+
+    // APPLICATION LOGIC FUNCTIONS
+    function getCurrentSlides() {
+        return currentScope === 'client' ? clientSlides : workerSlides;
+    }
+
+    function switchAppScope(scope) {
+        currentScope = scope;
+        currentSlideIdx = 0;
+
+        const btnClient = document.getElementById('btn-tab-client');
+        const btnWorker = document.getElementById('btn-tab-worker');
+
+        if (scope === 'client') {
+            btnClient.className = "px-4 py-2 rounded-lg transition-all flex items-center gap-2 bg-brand-emerald text-white shadow-md font-semibold";
+            btnWorker.className = "px-4 py-2 rounded-lg transition-all flex items-center gap-2 text-slate-400 hover:text-white font-semibold";
+        } else {
+            btnWorker.className = "px-4 py-2 rounded-lg transition-all flex items-center gap-2 bg-brand-teal text-slate-950 shadow-md font-extrabold";
+            btnClient.className = "px-4 py-2 rounded-lg transition-all flex items-center gap-2 text-slate-400 hover:text-white font-semibold";
+        }
+
+        renderSlide();
+        renderGridCards();
+    }
+
+    function setLanguage(lang) {
+        currentLang = lang;
+
+        ['fr', 'en', 'ru'].forEach(l => {
+            const btn = document.getElementById(`lang-${l}`);
+            if (l === lang) {
+                btn.className = "px-2.5 py-1 rounded bg-brand-teal text-slate-950 font-extrabold transition";
+            } else {
+                btn.className = "px-2.5 py-1 rounded text-slate-400 hover:text-white transition";
+            }
+        });
+
+        document.getElementById('active-lang-badge').textContent = lang.toUpperCase();
+
+        const purposeMap = {
+        };
+        document.getElementById('txt-voiceover-purpose').textContent = purposeMap[lang] || purposeMap.en;
+
+        const purposeTitleMap = {
+            ru: "Сценарий презентации ",
+            en: "Presenter Script ",
+            fr: "Scénario de présentation"
+        };
+        document.getElementById('lbl-narration-title').textContent = purposeTitleMap[lang] || purposeTitleMap.en;
+
+        renderSlide();
+    }
+
+    function stopMapAnimation() {
+        if (mapAnimFrameId !== null) {
+            cancelAnimationFrame(mapAnimFrameId);
+            mapAnimFrameId = null;
+        }
+    }
+
+    function startMapAnimation(mapType) {
+        stopMapAnimation();
+
+        const canvas = document.getElementById('animated-map-canvas');
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * (window.devicePixelRatio || 1);
+        canvas.height = rect.height * (window.devicePixelRatio || 1);
+        ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+
+        const w = rect.width;
+        const h = rect.height;
+
+        let progress = 0;
+        let pulse = 0;
+
+        // Define map road network waypoints
+        const waypoints = [
+            { x: w * 0.2, y: h * 0.8 },
+            { x: w * 0.2, y: h * 0.5 },
+            { x: w * 0.5, y: h * 0.5 },
+            { x: w * 0.5, y: h * 0.25 },
+            { x: w * 0.8, y: h * 0.25 }
+        ];
+
+        function animate() {
+            ctx.clearRect(0, 0, w, h);
+
+            // 1. Draw Map Background & Grid
+            ctx.fillStyle = mapType === 'client_home' ? '#0f172a' : '#020617';
+            ctx.fillRect(0, 0, w, h);
+
+            // Blocks / Buildings background shapes
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(w * 0.05, h * 0.08, w * 0.38, h * 0.35);
+            ctx.fillRect(w * 0.55, h * 0.08, w * 0.4, h * 0.14);
+            ctx.fillRect(w * 0.26, h * 0.56, w * 0.2, h * 0.38);
+            ctx.fillRect(w * 0.55, h * 0.32, w * 0.4, h * 0.6);
+
+            // Parks (Greenery)
+            ctx.fillStyle = '#064e3b';
+            ctx.fillRect(w * 0.05, h * 0.56, w * 0.18, h * 0.2);
+
+            // 2. Draw Major Roads
+            ctx.lineWidth = 14;
+            ctx.strokeStyle = '#334155';
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            // Road lines
+            ctx.beginPath();
+            ctx.moveTo(0, h * 0.5); ctx.lineTo(w, h * 0.5);
+            ctx.moveTo(w * 0.2, 0); ctx.lineTo(w * 0.2, h);
+            ctx.moveTo(w * 0.5, 0); ctx.lineTo(w * 0.5, h);
+            ctx.moveTo(0, h * 0.25); ctx.lineTo(w, h * 0.25);
+            ctx.stroke();
+
+            // Inner road surface
+            ctx.lineWidth = 10;
+            ctx.strokeStyle = '#1e293b';
+            ctx.stroke();
+
+            // 3. Draw Active Route Line for Navigation & Tracking
+            if (mapType === 'worker_nav' || mapType === 'client_tracking') {
+                ctx.lineWidth = 6;
+                ctx.strokeStyle = '#10b981'; // Glowing Emerald route line
+                ctx.shadowColor = '#10b981';
+                ctx.shadowBlur = 10;
+
+                ctx.beginPath();
+                ctx.moveTo(waypoints[0].x, waypoints[0].y);
+                for (let i = 1; i < waypoints.length; i++) {
+                    ctx.lineTo(waypoints[i].x, waypoints[i].y);
+                }
+                ctx.stroke();
+                ctx.shadowBlur = 0; // reset shadow
+            }
+
+            // 4. Calculate Moving Vehicle Position along Waypoints
+            progress += 0.0035;
+            if (progress > 1) progress = 0;
+
+            // Determine current position on segment
+            const totalSegments = waypoints.length - 1;
+            const scaledProg = progress * totalSegments;
+            const segIndex = Math.min(Math.floor(scaledProg), totalSegments - 1);
+            const segT = scaledProg - segIndex;
+
+            const p1 = waypoints[segIndex];
+            const p2 = waypoints[segIndex + 1];
+
+            const curX = p1.x + (p2.x - p1.x) * segT;
+            const curY = p1.y + (p2.y - p1.y) * segT;
+
+            // Angle for vehicle rotation
+            const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+
+            // Pulse timer
+            pulse = (pulse + 0.05) % (Math.PI * 2);
+
+            // 5. Draw Target Destination Marker (Client Location)
+            const dest = waypoints[waypoints.length - 1];
+
+            // Pulsing radar ring on destination
+            const pulseRadius = 12 + Math.sin(pulse) * 6;
+            ctx.beginPath();
+            ctx.arc(dest.x, dest.y, pulseRadius, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(20, 184, 166, 0.25)';
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(dest.x, dest.y, 7, 0, Math.PI * 2);
+            ctx.fillStyle = '#14b8a6';
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Destination Label Pill
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(dest.x - 30, dest.y - 24, 60, 14);
+            ctx.strokeStyle = '#14b8a6';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(dest.x - 30, dest.y - 24, 60, 14);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 8px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Client Spot', dest.x, dest.y - 14);
+
+            // 6. Draw Moving Vehicle / Worker Pin
+            if (mapType === 'worker_nav' || mapType === 'client_tracking') {
+                ctx.save();
+                ctx.translate(curX, curY);
+                ctx.rotate(angle);
+
+                // Vehicle icon shape (Arrow car representation)
+                ctx.fillStyle = '#10b981';
+                ctx.shadowColor = '#10b981';
+                ctx.shadowBlur = 12;
+
+                ctx.beginPath();
+                ctx.moveTo(10, 0);
+                ctx.lineTo(-8, -7);
+                ctx.lineTo(-4, 0);
+                ctx.lineTo(-8, 7);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                ctx.restore();
+
+                // Update live DOM stats if elements exist
+                const remDist = Math.max(10, Math.round((1 - progress) * 850));
+                const remSeconds = Math.max(5, Math.round((1 - progress) * 110));
+                const liveSpeed = 32 + Math.round(Math.sin(pulse) * 6);
+
+                const elDist = document.getElementById('map-live-dist');
+                const elEta = document.getElementById('map-live-eta');
+                const elSpeed = document.getElementById('map-live-speed');
+
+                if (elDist) elDist.textContent = `${remDist} m`;
+                if (elEta) {
+                    if (mapType === 'worker_nav') {
+                        elEta.textContent = `0:${String(remSeconds).padStart(2, '0')}`;
+                    } else {
+                        elEta.textContent = `ETA ${remSeconds} sec`;
+                    }
+                }
+                if (elSpeed) elSpeed.textContent = `Speed: ${liveSpeed} km/h`;
+
+            } else if (mapType === 'client_home') {
+                // Client Main Map Pin Pulsing
+                const userX = w * 0.5;
+                const userY = h * 0.5;
+
+                ctx.beginPath();
+                ctx.arc(userX, userY, 16 + Math.sin(pulse) * 8, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(16, 185, 129, 0.2)';
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.arc(userX, userY, 8, 0, Math.PI * 2);
+                ctx.fillStyle = '#10b981';
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2.5;
+                ctx.stroke();
+            }
+
+            mapAnimFrameId = requestAnimationFrame(animate);
+        }
+
+        animate();
+    }
+
+    function renderSlide() {
+        stopMapAnimation();
+
+        const slides = getCurrentSlides();
+        if (currentSlideIdx >= slides.length) currentSlideIdx = slides.length - 1;
+        if (currentSlideIdx < 0) currentSlideIdx = 0;
+
+        const slide = slides[currentSlideIdx];
+
+        // Update Badges & Counters
+        const badge = document.getElementById('slide-app-badge');
+        if (currentScope === 'client') {
+            badge.textContent = "Client App";
+            badge.className = "px-2.5 py-1 rounded-md bg-emerald-950 text-emerald-300 border border-emerald-800/50";
+        } else {
+            badge.textContent = "Specialist App";
+            badge.className = "px-2.5 py-1 rounded-md bg-teal-950 text-teal-300 border border-teal-800/50";
+        }
+
+        document.getElementById('slide-stage-category').textContent = slide.category;
+        document.getElementById('slide-counter').textContent = `${String(slide.id).padStart(2, '0')} / ${String(slides.length).padStart(2, '0')}`;
+
+        // Update Titles & Translations
+        document.getElementById('slide-title').textContent = slide.title[currentLang] || slide.title.en;
+        document.getElementById('slide-subtitle').textContent = slide.subtitle[currentLang] || slide.subtitle.en;
+        document.getElementById('slide-action-text').textContent = slide.action[currentLang] || slide.action.en;
+        document.getElementById('slide-narration-text').textContent = `"${slide.script[currentLang] || slide.script.en}"`;
+
+        // Render Dynamic Phone Screen
+        document.getElementById('mockup-content').innerHTML = slide.renderMockup();
+
+        // Start Map Canvas Animation if slide requires animated map
+        if (slide.hasAnimatedMap) {
+            setTimeout(() => {
+                startMapAnimation(slide.mapType);
+            }, 50);
+        }
+
+        // Reposition Target Pointer
+        const targetHotspot = document.getElementById('click-target-container');
+        if (slide.targetPos) {
+            targetHotspot.style.display = "block";
+            targetHotspot.style.top = slide.targetPos.top;
+            targetHotspot.style.left = slide.targetPos.left;
+        } else {
+            targetHotspot.style.display = "none";
+        }
+
+        // Render Dots
+        const dotsContainer = document.getElementById('slide-dots');
+        dotsContainer.innerHTML = slides.map((s, idx) => `
+        <button onclick="goToSlide(${idx})" class="w-2.5 h-2.5 rounded-full transition-all ${idx === currentSlideIdx ? 'bg-brand-teal w-6' : 'bg-slate-800 hover:bg-slate-700'}"></button>
+      `).join('');
+
+        // Enable/Disable Prev/Next Buttons
+        document.getElementById('btn-prev').disabled = currentSlideIdx === 0;
+        document.getElementById('btn-prev').style.opacity = currentSlideIdx === 0 ? "0.4" : "1";
+        document.getElementById('btn-next').disabled = currentSlideIdx === slides.length - 1;
+        document.getElementById('btn-next').style.opacity = currentSlideIdx === slides.length - 1 ? "0.4" : "1";
+    }
+
+    function nextSlide() {
+        const slides = getCurrentSlides();
+        if (currentSlideIdx < slides.length - 1) {
+            currentSlideIdx++;
+            renderSlide();
+        }
+    }
+
+    function prevSlide() {
+        if (currentSlideIdx > 0) {
+            currentSlideIdx--;
+            renderSlide();
+        }
+    }
+
+    function goToSlide(idx) {
+        currentSlideIdx = idx;
+        renderSlide();
+        const gridModal = document.getElementById('grid-view');
+        if (!gridModal.classList.contains('hidden')) {
+            toggleGridOverview();
+        }
+    }
+
+    function toggleGridOverview() {
+        const modal = document.getElementById('grid-view');
+        modal.classList.toggle('hidden');
+        if (!modal.classList.contains('hidden')) {
+            renderGridCards();
+        }
+    }
+
+    function renderGridCards() {
+        const slides = getCurrentSlides();
+        const container = document.getElementById('grid-cards-container');
+        container.innerHTML = slides.map((s, idx) => `
+        <div onclick="goToSlide(${idx})" class="bg-slate-900 border ${idx === currentSlideIdx ? 'border-brand-teal ring-2 ring-brand-teal/30' : 'border-slate-800'} hover:border-slate-700 rounded-2xl p-4 cursor-pointer transition flex flex-col justify-between h-44">
+          <div>
+            <div class="flex justify-between items-center text-xs text-slate-400 mb-2">
+              <span class="font-mono text-brand-teal font-bold">Step ${String(s.id).padStart(2, '0')}</span>
+              <span class="text-[10px] bg-slate-950 px-2 py-0.5 rounded border border-slate-800">${s.category}</span>
+            </div>
+            <h4 class="font-bold text-sm text-white line-clamp-1">${s.title[currentLang] || s.title.en}</h4>
+            <p class="text-xs text-slate-400 line-clamp-2 mt-1">${s.subtitle[currentLang] || s.subtitle.en}</p>
+          </div>
+          <div class="text-[11px] text-brand-emerald font-semibold flex items-center justify-between border-t border-slate-800 pt-2">
+            <span>View Step</span>
+            <span>→</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Keyboard Shortcuts
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight') nextSlide();
+        if (e.key === 'ArrowLeft') prevSlide();
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('grid-view');
+            if (!modal.classList.contains('hidden')) modal.classList.add('hidden');
+        }
+    });
+
+    // Initial Load
+    renderSlide();
+</script>
+</body>
+</html>
