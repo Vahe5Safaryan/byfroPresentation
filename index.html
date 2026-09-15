@@ -20,7 +20,7 @@
                     }
                 }
             }
-        }
+        };
     </script>
     <style>
         @keyframes pulse-ring {
@@ -61,8 +61,8 @@
                 <img id="main-brand-logo"
                      src="logo/BYFRO1.png"
                      alt="BYFRO Logo"
-                     class="w-full h-full object-contain"
-                     onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'w-full h-full bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center font-black text-slate-950 text-xl\'>B</div>';">
+                     class="w-full h-full object-contain p-1"
+                     onerror="renderBrandLogoFallback(this)">
             </div>
             <div class="min-w-0">
                 <div class="flex items-center gap-1.5 sm:gap-2">
@@ -78,17 +78,20 @@
             <button id="btn-tab-client" onclick="switchAppScope('client')" class="px-2.5 sm:px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 bg-emerald-600 text-white shadow-md whitespace-nowrap">
                 <span class="w-2 h-2 rounded-full bg-emerald-200 shrink-0"></span>
                 <span id="tab-label-client">Клиент (Client)</span>
-                <span id="badge-client-count" class="text-[10px] bg-black/40 px-1.5 py-0.5 rounded font-mono">22</span>
+                <span id="badge-client-count" class="text-[10px] bg-black/40 px-1.5 py-0.5 rounded font-mono">21</span>
             </button>
             <button id="btn-tab-worker" onclick="switchAppScope('worker')" class="px-2.5 sm:px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 text-slate-400 hover:text-white whitespace-nowrap">
                 <span class="w-2 h-2 rounded-full bg-slate-600 shrink-0"></span>
                 <span id="tab-label-worker">Мастер (Worker)</span>
-                <span id="badge-worker-count" class="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded font-mono">17</span>
+                <span id="badge-worker-count" class="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded font-mono">18</span>
             </button>
         </div>
 
         <!-- Right Action Controls -->
         <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <!-- Local Folder Loader for Online Preview -->
+            <input type="file" id="local-folder-input" webkitdirectory directory multiple class="hidden" onchange="handleFolderSelect(event)">
+
             <!-- Display Mode Switcher -->
             <button id="btn-display-mode" onclick="toggleDisplayMode()" title="Переключить режим" class="px-2.5 sm:px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-300 hover:text-white text-xs font-bold flex items-center gap-1.5 transition whitespace-nowrap">
                 <span id="display-mode-icon">🖼️</span>
@@ -173,16 +176,16 @@
                     </div>
                     <div class="flex items-center gap-2">
                         <span class="text-xs text-slate-400" id="lbl-step-word">Шаг</span>
-                        <span id="slide-counter" class="text-sm font-mono font-bold text-white bg-slate-950 border border-slate-800 px-3 py-1 rounded-lg">01 / 22</span>
+                        <span id="slide-counter" class="text-sm font-mono font-bold text-white bg-slate-950 border border-slate-800 px-3 py-1 rounded-lg">01 / 21</span>
                     </div>
                 </div>
 
                 <h2 id="slide-title" class="text-2xl sm:text-3xl font-black text-white tracking-tight mb-2">
-                    1. Экран входа и ввод телефона
+                    1. Экран входа по номеру телефона
                 </h2>
 
                 <p id="slide-subtitle" class="text-sm text-slate-300 mb-5 leading-relaxed">
-                    Ввод номера мобильного телефона для быстрой аутентификации без паролей.
+                    Стартовый экран авторизации без пароля с отправкой проверочного SMS-кода
                 </p>
 
                 <div class="bg-slate-950 border border-red-500/30 rounded-2xl p-5 mb-5 shadow-inner">
@@ -195,7 +198,7 @@
                                 Куда нажимать на экране:
                             </div>
                             <div id="slide-action-text" class="text-base sm:text-lg font-bold text-slate-100 leading-snug">
-                                Кнопка «Get Code» после ввода номера телефона.
+                                Введите номер телефона и нажмите «Get Code»
                             </div>
                         </div>
                     </div>
@@ -217,7 +220,7 @@
 
                     <div class="relative bg-slate-900/90 p-5 rounded-xl border border-slate-800 shadow-inner">
                         <p id="slide-narration-text" class="text-lg sm:text-xl font-medium text-slate-100 leading-relaxed">
-                            "Откройте приложение Byfro. Введите ваш номер телефона и нажмите 'Get Code', чтобы войти в аккаунт."
+                            "Откройте приложение Byfro. Введите номер мобильного телефона и нажмите 'Get Code' для получения SMS-кода."
                         </p>
                     </div>
 
@@ -245,7 +248,7 @@
 
 </main>
 
-<!-- GRID MODAL -->
+<!-- GRID OVERVIEW MODAL -->
 <div id="grid-view" class="no-print hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md p-6 overflow-y-auto custom-scrollbar">
     <div class="max-w-7xl mx-auto">
         <div class="flex items-center justify-between pb-6 border-b border-slate-800 mb-8">
@@ -262,66 +265,42 @@
     </div>
 </div>
 
+<!-- APPLICATION DATA & LOGIC -->
 <script>
     let currentScope = 'client';
     let currentLang = 'ru';
     let currentSlideIdx = 0;
     let displayMode = 'screenshot';
     let mapAnimFrameId = null;
+    window.localAssets = {};
 
-    /* CHRONOLOGICAL CLIENT APP JOURNEY */
+    /* CHRONOLOGICAL CLIENT APP JOURNEY (21 SCREENS) */
     const clientSlides = [
         {
             id: 1,
             category: { ru: "1. Вход и Авторизация", fr: "1. Connexion & Inscription", en: "1. Auth & Onboarding" },
-            img: "img/client/photo_39_2026-09-10_21-51-23.jpg",
-            targetPos: { top: "60%", left: "50%" },
+            img: "img/client/25.jpg",
+            fallback: "img/client/1.jpg",
+            targetPos: { top: "52%", left: "50%" },
             title: { ru: "1. Вход по номеру телефона", fr: "1. Bienvenue & Connexion Mobile", en: "1. Welcome & Phone Login" },
-            subtitle: { ru: "Стартовый экран входа без пароля с отправкой проверочного SMS-кода", fr: "Écran d'accueil pour connexion rapide sans mot de passe", en: "Passwordless authentication screen with instant SMS OTP verification" },
+            subtitle: { ru: "Стартовый экран авторизации без пароля с отправкой проверочного SMS-кода", fr: "Écran d'accueil pour connexion rapide sans mot de passe", en: "Passwordless authentication screen with instant SMS OTP verification" },
             action: { ru: "Введите номер телефона и нажмите «Get Code»", fr: "Saisissez votre numéro et appuyez sur « Get Code »", en: "Enter your phone number and tap «Get Code»" },
             script: {
-                ru: "Откройте приложение Byfro. Введите номер мобильного телефона и нажмите 'Get Code'. Если у вас ещё нет аккаунта, нажмите 'Register' внизу.",
-                fr: "Ouvrez l'application Byfro. Saisissez votre numéro de téléphone et cliquez sur 'Get Code'. Pour un nouveau compte, cliquez sur 'Register' en bas.",
-                en: "Open the Byfro app. Enter your phone number and tap 'Get Code'. If you are a new customer, tap 'Register' below."
+                ru: "Откройте приложение Byfro. Введите номер мобильного телефона и нажмите 'Get Code' для получения SMS-кода.",
+                fr: "Ouvrez l'application Byfro. Saisissez votre numéro de téléphone et cliquez sur 'Get Code'.",
+                en: "Open the Byfro app. Enter your phone number and tap 'Get Code' to log in."
             }
         },
         {
             id: 2,
-            category: { ru: "1. Вход и Авторизация", fr: "1. Connexion & Inscription", en: "1. Auth & Onboarding" },
-            img: "img/client/photo_37_2026-09-10_21-51-23.jpg",
-            targetPos: { top: "45%", left: "50%" },
-            title: { ru: "2. Выбор телефонного кода страны", fr: "2. Choix de l'Indicatif Pays", en: "2. International Country Code" },
-            subtitle: { ru: "Выбор международного кода (+49 Germany, +374 Armenia, +33 France...)", fr: "Sélection du préfixe téléphonique pour la réception du code", en: "Selecting mobile international calling prefix from the picker" },
-            action: { ru: "Выберите страну из списка", fr: "Sélectionnez votre pays", en: "Select your country from list" },
-            script: {
-                ru: "Выберите код страны вашего мобильного оператора для корректной доставки SMS с кодом подтверждения.",
-                fr: "Sélectionnez l'indicatif correspondant à votre opérateur pour recevoir votre code SMS de sécurité.",
-                en: "Select your country code to ensure accurate delivery of your SMS verification code."
-            }
-        },
-        {
-            id: 3,
-            category: { ru: "1. Вход и Авторизация", fr: "1. Connexion & Inscription", en: "1. Auth & Onboarding" },
-            img: "img/client/photo_36_2026-09-10_21-51-23.jpg",
-            targetPos: { top: "62%", left: "50%" },
-            title: { ru: "3. Ввод SMS-кода и регистрация", fr: "3. Code SMS & Profil", en: "3. SMS Code & Profile Setup" },
-            subtitle: { ru: "Ввод 6 цифр из SMS, имени и адреса электронной почты", fr: "Saisie du code à 6 chiffres, nom complet et email", en: "Entering 6-digit SMS code, full name, and email address" },
-            action: { ru: "Заполните данные и нажмите «Register»", fr: "Renseignez vos infos et validez « Register »", en: "Fill details and tap «Register»" },
-            script: {
-                ru: "Введите 6-значный код из SMS, ваше имя и Email для получения чеков, затем нажмите 'Register'.",
-                fr: "Entrez le code à 6 chiffres reçu, renseignez vos coordonnées puis appuyez sur 'Register'.",
-                en: "Enter the 6-digit SMS code, your name, and email for digital invoices, then tap 'Register'."
-            }
-        },
-        {
-            id: 4,
             category: { ru: "2. Создание заказа", fr: "2. Création de Commande", en: "2. Booking Request" },
             hasAnimatedMap: true,
             mapType: "client_home",
-            img: "img/client/photo_35_2026-09-10_21-51-23.jpg",
-            targetPos: { top: "82%", left: "50%" },
-            title: { ru: "4. Главная карта и старт заказа", fr: "4. Carte d'Accueil & Commande", en: "4. Home Map & Quick Booking" },
-            subtitle: { ru: "Интерактивная карта с геолокацией и быстрой шторкой заказа", fr: "Carte avec géolocalisation et volet de commande rapide", en: "Interactive city map with live GPS detection and Quick Booking drawer" },
+            img: "img/client/6.jpg",
+            fallback: "img/client/2.jpg",
+            targetPos: { top: "86%", left: "50%" },
+            title: { ru: "2. Главная карта и старт заказа", fr: "2. Carte d'Accueil & Commande", en: "2. Home Map & Quick Booking" },
+            subtitle: { ru: "Интерактивная карта с геолокацией и быстрой шторкой вызова", fr: "Carte avec géolocalisation et volet de commande rapide", en: "Interactive city map with live GPS detection and Quick Booking drawer" },
             action: { ru: "Нажмите «Start booking»", fr: "Appuyez sur « Start booking »", en: "Tap «Start booking»" },
             script: {
                 ru: "На главной карте отображается ваша геолокация. Нажмите зелёную кнопку 'Start booking', чтобы вызвать мастера.",
@@ -330,73 +309,110 @@
             }
         },
         {
+            id: 3,
+            category: { ru: "2. Создание заказа", fr: "2. Création de Commande", en: "2. Booking Request" },
+            img: "img/client/29.jpg",
+            fallback: "img/client/3.jpg",
+            targetPos: { top: "34%", left: "62%" },
+            title: { ru: "3. Выбор направления и времени", fr: "3. Métier & Créneau Horaire", en: "3. Service Category & Schedule" },
+            subtitle: { ru: "Выбор специальности (Electrical, Plumbing) и срока (ASAP / Schedule)", fr: "Sélection de la discipline technique et du délai souhaité", en: "Selecting trade specialty (Electrical, Plumbing) and visit schedule" },
+            action: { ru: "Выберите «Electrical» и «As soon as possible»", fr: "Choisissez « Electrical »", en: "Select «Electrical» and «As soon as possible»" },
+            script: {
+                ru: "Шаг 1: Выберите специальность мастера (Electrical). Шаг 2: Выберите срок визита — As soon as possible.",
+                fr: "Étape 1 : Choisissez le métier (Electrical). Étape 2 : Sélectionnez l'heure d'arrivée (As soon as possible).",
+                en: "Step 1: Pick the service trade (Electrical). Step 2: Choose when you need help (ASAP)."
+            }
+        },
+        {
+            id: 4,
+            category: { ru: "2. Создание заказа", fr: "2. Création de Commande", en: "2. Booking Request" },
+            img: "img/client/21.jpg",
+            fallback: "img/client/4.jpg",
+            targetPos: { top: "58%", left: "35%" },
+            title: { ru: "4. Способ оплаты вызова", fr: "4. Paiement du Déplacement", en: "4. Payment Method & Problem" },
+            subtitle: { ru: "Оплата диагностики (70 EUR) картой или наличными мастеру", fr: "Choix du règlement (70 €) : Carte ou Espèces", en: "Selecting Card or Cash for diagnostic callout fee" },
+            action: { ru: "Выберите способ оплаты (Cash / Card)", fr: "Sélectionnez le mode de paiement", en: "Select payment method (Cash / Card)" },
+            script: {
+                ru: "Шаг 3: Выберите способ оплаты фиксированного вызова мастера — онлайн картой или наличными после визита.",
+                fr: "Étape 3 : Choisissez le mode de paiement pour le déplacement : carte ou espèces.",
+                en: "Step 3: Select how you want to pay for the initial callout fee — Card or Cash."
+            }
+        },
+        {
             id: 5,
             category: { ru: "2. Создание заказа", fr: "2. Création de Commande", en: "2. Booking Request" },
-            img: "img/client/photo_28_2026-09-10_21-51-23.jpg",
-            targetPos: { top: "28%", left: "50%" },
-            title: { ru: "5. Поиск и выбор адреса", fr: "5. Recherche d'Adresse", en: "5. Address Search & Selection" },
-            subtitle: { ru: "Ввод точного адреса объекта через строку поиска или подсказки", fr: "Saisie de l'adresse exacte via la barre de recherche", en: "Entering exact building address or picking from Google suggestions" },
-            action: { ru: "Введите адрес или выберите сохраненный", fr: "Renseignez la rue", en: "Type address in search bar" },
+            img: "img/client/19.jpg",
+            fallback: "img/client/5.jpg",
+            targetPos: { top: "85%", left: "50%" },
+            title: { ru: "5. Описание поломки и фото", fr: "5. Photos & Création", en: "5. Description, Photos & Submit" },
+            subtitle: { ru: "Прикрепление фото поломки (1/5), примечание и создание заказа", fr: "Ajout de photos justificatives (1/5) et validation", en: "Attaching problem photos (1/5), description note, and creating order" },
+            action: { ru: "Прикрепите фото и нажмите «Create Order»", fr: "Cliquez sur « Create Order »", en: "Attach photos and tap «Create Order»" },
             script: {
-                ru: "Укажите точный адрес выполнения работ в поиске или выберите сохраненный адрес (Дом, Офис).",
-                fr: "Indiquez l'adresse d'intervention souhaitée en utilisant la barre de recherche intelligente.",
-                en: "Type your destination address or choose from your saved locations like Home or Office."
+                ru: "Шаг 4: Опишите неисправность, прикрепите фотографии и нажмите 'Create Order' для отправки заявки.",
+                fr: "Étape 4 : Décrivez le problème, joignez des photos et appuyez sur 'Create Order'.",
+                en: "Step 4: Describe the issue, attach photos, and tap 'Create Order' to broadcast your request."
             }
         },
         {
             id: 6,
-            category: { ru: "2. Создание заказа", fr: "2. Création de Commande", en: "2. Booking Request" },
-            img: "img/client/photo_34_2026-09-10_21-51-23.jpg",
-            targetPos: { top: "48%", left: "70%" },
-            title: { ru: "6. Выбор специальности и времени", fr: "6. Métier & Créneau Horaire", en: "6. Service Category & Schedule" },
-            subtitle: { ru: "Выбор направления (Electrical, Plumbing) и срока (ASAP / Schedule)", fr: "Sélection de la discipline technique et du délai souhaité", en: "Selecting trade specialty (Electrical, Plumbing) and visit schedule" },
-            action: { ru: "Выберите «Electrical» и «As soon as possible»", fr: "Choisissez « Electrical »", en: "Select «Electrical» and «As soon as possible»" },
+            category: { ru: "3. Поиск и в пути", fr: "3. Recherche & Trajet", en: "3. Matching & En Route" },
+            img: "img/client/18.jpg",
+            fallback: "img/client/6.jpg",
+            targetPos: { top: "64%", left: "50%" },
+            title: { ru: "6. Поиск ближайшего мастера (Matching)", fr: "6. Recherche d'Artisan", en: "6. Real-Time Radar Matching" },
+            subtitle: { ru: "Радарный поиск и автоматическое назначение свободного мастера", fr: "Attribution automatique de l'artisan le plus proche", en: "Algorithmic matching broadcasting order to nearest verified master" },
+            action: { ru: "Ожидайте назначения специалиста", fr: "Patientez pendant la recherche", en: "Wait for specialist assignment" },
             script: {
-                ru: "Шаг 1: Выберите специальность мастера (например, Electrical). Шаг 2: Выберите срочность — как можно скорее или по расписанию.",
-                fr: "Étape 1 : Choisissez le corps de métier. Étape 2 : Sélectionnez l'heure d'arrivée (au plus vite ou planifié).",
-                en: "Step 1: Pick the service trade (e.g. Electrical). Step 2: Choose when you need help (ASAP or scheduled)."
+                ru: "Система сканирует свободных специалистов в радиусе вашего адреса и назначает ближайшего мастера.",
+                fr: "Le système analyse les disponibilités dans votre secteur et affecte le meilleur professionnel.",
+                en: "The system scans nearby verified technicians and assigns the closest specialist."
             }
         },
         {
             id: 7,
-            category: { ru: "2. Создание заказа", fr: "2. Création de Commande", en: "2. Booking Request" },
-            img: "img/client/photo_25_2026-09-10_21-51-23.jpg",
-            targetPos: { top: "25%", left: "50%" },
-            title: { ru: "7. Способ оплаты вызова (Callout Fee)", fr: "7. Paiement du Déplacement", en: "7. Diagnostic Callout Payment" },
-            subtitle: { ru: "Оплата первичного вызова и диагностики (70.00 EUR) картой или наличными", fr: "Choix du règlement pour le déplacement (70.00 €) : Carte ou Espèces", en: "Selecting saved card or cash for the fixed diagnostic callout fee (€70.00)" },
-            action: { ru: "Выберите Card или Cash", fr: "Sélectionnez Carte ou Cash", en: "Choose Card or Cash" },
+            category: { ru: "3. Поиск и в пути", fr: "3. Recherche & Trajet", en: "3. Matching & En Route" },
+            img: "img/client/17.jpg",
+            fallback: "img/client/7.jpg",
+            targetPos: { top: "75%", left: "50%" },
+            title: { ru: "7. Карточка поиска (Searching for a master)", fr: "7. Fiche de Recherche Active", en: "7. Active Search & Order Card" },
+            subtitle: { ru: "Отображение параметров заказа с возможностью отмены", fr: "Détails de la recherche avec option d'annulation", en: "Live search screen showing callout fee and option to cancel order" },
+            action: { ru: "Следите за статусом подбора", fr: "Suivez le statut", en: "Monitor matching status" },
             script: {
-                ru: "Шаг 3: Выберите способ оплаты фиксированного вызова и диагностики мастера (70.00 €) — онлайн картой или наличными.",
-                fr: "Étape 3 : Choisissez comment régler les frais de déplacement et diagnostic (70.00 €) : carte ou espèces.",
-                en: "Step 3: Select how to cover the initial diagnostic callout fee (€70.00) — via card or cash upon arrival."
+                ru: "В деталях заказа отображается статус 'Searching for a master' и гарантированная стоимость вызова 70 €.",
+                fr: "La fiche affiche le statut de recherche en cours ainsi que le tarif de déplacement de 70 €.",
+                en: "The order card displays 'Searching for a master' along with the fixed €70 callout rate."
             }
         },
         {
             id: 8,
-            category: { ru: "2. Создание заказа", fr: "2. Création de Commande", en: "2. Booking Request" },
-            img: "img/client/photo_31_2026-09-10_21-51-23.jpg",
-            targetPos: { top: "82%", left: "50%" },
-            title: { ru: "8. Описание поломки, фото и заказ", fr: "8. Photos, Description & Validation", en: "8. Description, Photos & Submit" },
-            subtitle: { ru: "Прикрепление фото поломки (до 5 шт.), текстовое примечание и создание заказа", fr: "Ajout de photos justificatives (2/5) et validation de la demande", en: "Attaching damage photos (up to 5), problem note, and creating order" },
-            action: { ru: "Прикрепите фото и нажмите «Create Order»", fr: "Cliquez sur « Create Order »", en: "Attach photos and tap «Create Order»" },
+            category: { ru: "3. Поиск и в пути", fr: "3. Recherche & Trajet", en: "3. Matching & En Route" },
+            hasAnimatedMap: true,
+            mapType: "client_tracking",
+            img: "img/client/16.jpg",
+            fallback: "img/client/8.jpg",
+            targetPos: { top: "67%", left: "60%" },
+            title: { ru: "8. Мастер назначен и едет к вам", fr: "8. Artisan en Route (Carte)", en: "8. Specialist Assigned & En Route" },
+            subtitle: { ru: "Отображение маршрута мастера (Vahe, 4.8★) в реальном времени", fr: "Suivi en direct de l'artisan assigné sur la carte", en: "Tracking assigned technician (Vahe, 4.8★) driving towards your location" },
+            action: { ru: "Следите за перемещением мастера по карте", fr: "Suivez le trajet en direct", en: "Monitor driver movement on map" },
             script: {
-                ru: "Шаг 4: Кратко опишите поломку, прикрепите фотографии и нажмите 'Create Order' для вызова специалиста.",
-                fr: "Étape 4 : Décrivez le problème, joignez des photos et appuyez sur 'Create Order' pour lancer l'appel.",
-                en: "Step 4: Briefly describe the breakdown, attach photos, and tap 'Create Order' to broadcast your request."
+                ru: "Мастер найден и едет по вашему адресу. На карте отображается его маршрут и текущее положение.",
+                fr: "Votre artisan est en route. Suivez son déplacement en direct sur la carte.",
+                en: "Specialist assigned! You can view the technician's profile and live route on the map."
             }
         },
         {
             id: 9,
             category: { ru: "3. Поиск и в пути", fr: "3. Recherche & Trajet", en: "3. Matching & En Route" },
-            img: "img/client/photo_26_2026-09-10_21-51-23.jpg",
-            targetPos: { top: "52%", left: "50%" },
-            title: { ru: "9. Поиск ближайшего мастера (Radar)", fr: "9. Recherche d'Artisan à Proximité", en: "9. Real-Time Radar Matching" },
-            subtitle: { ru: "Алгоритмический поиск и назначение свободного сертифицированного мастера", fr: "Attribution automatique de l'artisan le plus proche", en: "Algorithmic matching broadcasting order to nearest verified master" },
-            action: { ru: "Ожидайте назначения специалиста", fr: "Patientez pendant la recherche", en: "Wait for specialist assignment" },
+            img: "img/client/14.jpg",
+            fallback: "img/client/9.jpg",
+            targetPos: { top: "33%", left: "65%" },
+            title: { ru: "9. Публичный профиль мастера", fr: "9. Profil Public de l'Artisan", en: "9. Master Profile & Verified Skills" },
+            subtitle: { ru: "Просмотр рейтинга (4.8★), выполненных заказов и подтвержденных специальностей", fr: "Note (4.8★), missions réalisées et compétences validées", en: "Reviewing technician rating, completed orders count, and certified trades" },
+            action: { ru: "Ознакомьтесь с квалификацией мастера", fr: "Vérifiez les compétences", en: "Inspect technician credentials" },
             script: {
-                ru: "Система сканирует мастеров поблизости в радиусе вашего адреса и назначает лучшего специалиста.",
-                fr: "Le système analyse les disponibilités dans votre secteur et affecte le meilleur professionnel.",
-                en: "The matching engine scans available pros near your address and assigns the optimal technician."
+                ru: "Вы можете открыть профиль мастера, увидеть его рейтинг 4.8, опыт и список подтвержденных специальностей.",
+                fr: "Consultez la fiche du professionnel avec sa note, son expérience et ses domaines d'expertise.",
+                en: "Tap to review the technician's public profile, showing a 4.8 rating and verified trade badges."
             }
         },
         {
@@ -404,431 +420,459 @@
             category: { ru: "3. Поиск и в пути", fr: "3. Recherche & Trajet", en: "3. Matching & En Route" },
             hasAnimatedMap: true,
             mapType: "client_tracking",
-            img: "img/client/photo_23_2026-09-10_21-51-23.jpg",
-            targetPos: { top: "52%", left: "50%" },
-            title: { ru: "10. Мастер назначен и едет к вам", fr: "10. Artisan en Route (Carte GPS)", en: "10. Specialist Assigned & En Route" },
-            subtitle: { ru: "Отображение мастера (Vahe, 4.8★) и его маршрута на карте", fr: "Suivi en direct de l'artisan assigné sur la carte", en: "Tracking assigned technician (Vahe, 4.8★) driving towards your location" },
-            action: { ru: "Следите за движением мастера на карте", fr: "Suivez le trajet en direct", en: "Monitor driver movement on map" },
+            img: "img/client/15.jpg",
+            fallback: "img/client/10.jpg",
+            targetPos: { top: "67%", left: "75%" },
+            title: { ru: "10. Прибытие мастера на адрес", fr: "10. Arrivée à Destination", en: "10. Doorstep Arrival («At your address»)" },
+            subtitle: { ru: "Статус «At your address» — мастер прибыл к объекту", fr: "Statut d'arrivée : l'artisan est sur place", en: "Arrival status («At your address») confirming master arrival at location" },
+            action: { ru: "Встречайте специалиста у входа", fr: "Accueillez l'artisan", en: "Welcome the specialist at the door" },
             script: {
-                ru: "Мастер назначен! Вы можете видеть профиль специалиста и его перемещение по карте в реальном времени.",
-                fr: "Votre artisan est en route. Suivez son déplacement en direct sur la carte avec son profil détaillé.",
-                en: "Specialist assigned! You can view the technician's profile and live route on the map."
+                ru: "Статус изменился на 'At your address'. Мастер подъехал к дому и готов начать осмотр.",
+                fr: "L'artisan est arrivé à votre adresse. Accueillez-le pour débuter l'intervention.",
+                en: "Status updated to 'At your address'. Meet the technician at the entrance for inspection."
             }
         },
         {
             id: 11,
             category: { ru: "3. Поиск и в пути", fr: "3. Recherche & Trajet", en: "3. Matching & En Route" },
-            hasAnimatedMap: true,
-            mapType: "client_tracking",
-            img: "img/client/photo_21_2026-09-10_21-51-23.jpg",
-            targetPos: { top: "48%", left: "50%" },
-            title: { ru: "11. Прибытие мастера на адрес", fr: "11. Arrivée à Destination", en: "11. Doorstep Arrival (ETA < 1 min)" },
-            subtitle: { ru: "Статус «At your address», расстояние 37 метров и встреча мастера", fr: "Statut d'arrivée imminente (distance 37 m, ETA < 1 min)", en: "Arrival status («At your address»), distance 37 meters, ETA under 1 minute" },
-            action: { ru: "Встречайте специалиста у входа", fr: "Accueillez l'artisan", en: "Welcome the specialist at the door" },
+            img: "img/client/13.jpg",
+            fallback: "img/client/11.jpg",
+            targetPos: { top: "40%", left: "55%" },
+            title: { ru: "11. Детали прибытия (Расстояние 5 м)", fr: "11. Fiche d'Arrivée (5 m)", en: "11. Doorstep Details (Distance 5 m)" },
+            subtitle: { ru: "Карточка заказа: ETA < 1 мин, расстояние 5 метров до двери", fr: "Fiche détaillée : ETA < 1 min, distance restante 5 mètres", en: "Order card indicating distance 5 meters and arrival confirmation" },
+            action: { ru: "Проверьте данные визита", fr: "Vérifiez les données d'arrivée", en: "Check arrival metrics" },
             script: {
-                ru: "Мастер подъехал к вашему дому (расстояние 37 метров). Встречайте специалиста для начала диагностики.",
-                fr: "L'artisan est arrivé à votre adresse (37 mètres). Accueillez-le pour débuter l'inspection.",
-                en: "The specialist has arrived at your address (37 meters away). Meet the master to begin diagnostics."
+                ru: "В карточке заказа отображается статус 'At your address' и точная дистанция — 5 метров до точки.",
+                fr: "La fiche confirme la proximité immédiate : 5 mètres du point d'intervention.",
+                en: "The arrival details show the technician is within 5 meters of your doorstep."
             }
         },
         {
             id: 12,
             category: { ru: "4. Смета и ремонт", fr: "4. Devis & Travaux", en: "4. Quote & Repair" },
-            img: "img/client/photo_22_2026-09-10_21-51-23.jpg",
-            targetPos: { top: "58%", left: "70%" },
-            title: { ru: "12. Смета готова к проверке", fr: "12. Devis Disponible", en: "12. Quote Ready to Review" },
-            subtitle: { ru: "Уведомление «Quote ready to review» и кнопка перехода к смете", fr: "Notification de devis prêt à être examiné", en: "Notification alert indicating the technician has submitted the repair quote" },
-            action: { ru: "Нажмите «Review quote»", fr: "Cliquez sur « Review quote »", en: "Tap «Review quote»" },
+            img: "img/client/12.jpg",
+            fallback: "img/client/12.jpg",
+            targetPos: { top: "66%", left: "80%" },
+            title: { ru: "12. Проведение диагностики (Inspection)", fr: "12. Diagnostic en Cours", en: "12. Physical Inspection in Progress" },
+            subtitle: { ru: "Статус «Inspection in progress» — мастер оценивает объем работ", fr: "L'artisan examine la panne pour établir le devis", en: "Technician inspecting physical wiring/equipment to prepare quote" },
+            action: { ru: "Ожидайте расчета сметы", fr: "Patientez pendant le chiffrage", en: "Wait for repair estimate" },
             script: {
-                ru: "После осмотра мастер составил расчет стоимости ремонта. Нажмите 'Review quote' для ознакомления.",
-                fr: "Après l'inspection, l'artisan a rédigé le devis. Cliquez sur 'Review quote' pour vérifier les montants.",
-                en: "Following physical diagnostics, the master compiled the quote. Tap 'Review quote' to inspect."
+                ru: "Мастер проводит физический осмотр оборудования для составления прозрачной сметы.",
+                fr: "L'artisan effectue le diagnostic sur place pour préparer son chiffrage détaillé.",
+                en: "The master conducts on-site diagnostics to formulate the itemized quote."
             }
         },
         {
             id: 13,
             category: { ru: "4. Смета и ремонт", fr: "4. Devis & Travaux", en: "4. Quote & Repair" },
-            img: "img/client/photo_17_2026-09-10_21-51-23.jpg",
-            targetPos: { top: "80%", left: "50%" },
-            title: { ru: "13. Утверждение сметы (Quote #1)", fr: "13. Validation du Devis", en: "13. Itemized Quote Review & Approval" },
-            subtitle: { ru: "Детализация: работа (500 €) и запчасти (30 €). Кнопки Approve / Reject", fr: "Ventilation des coûts : Main d'œuvre (500 €) et Pièces (30 €)", en: "Itemized breakdown: Labor (500 €) and Parts (30 €). Total additional 530 €" },
-            action: { ru: "Нажмите «Approve and pay» для старта работ", fr: "Appuyez sur « Approve and pay »", en: "Tap «Approve and pay»" },
+            img: "img/client/10.jpg",
+            fallback: "img/client/13.jpg",
+            targetPos: { top: "66%", left: "80%" },
+            title: { ru: "13. Смета готова к проверке", fr: "13. Devis Disponible", en: "13. Quote Ready to Review" },
+            subtitle: { ru: "Уведомление «Quote ready to review» и переход к смете", fr: "Notification de devis prêt à être examiné", en: "Notification alert indicating technician submitted the repair quote" },
+            action: { ru: "Нажмите «Review quote»", fr: "Cliquez sur « Review quote »", en: "Tap «Review quote»" },
             script: {
-                ru: "Проверьте позиции сметы: 500 € работа и 30 € материалы. Нажмите 'Approve and pay' для подтверждения.",
-                fr: "Examinez les coûts détaillés : 500 € de main d'œuvre et 30 € de fournitures. Validez avec 'Approve and pay'.",
-                en: "Review itemized costs: €500 labor and €30 materials. Tap 'Approve and pay' to authorize the repair."
+                ru: "Мастер закончил диагностику и отправил смету. Нажмите 'Review quote' для проверки сумм.",
+                fr: "Le devis est prêt. Cliquez sur 'Review quote' pour vérifier les montants.",
+                en: "Physical diagnostics complete. Tap 'Review quote' to inspect the submitted estimate."
             }
         },
         {
             id: 14,
             category: { ru: "4. Смета и ремонт", fr: "4. Devis & Travaux", en: "4. Quote & Repair" },
-            img: "img/client/photo_16_2026-09-10_21-51-23.jpg",
-            targetPos: { top: "55%", left: "50%" },
-            title: { ru: "14. Смета подтверждена (Quote approved)", fr: "14. Devis Approuvé", en: "14. Quote Approved Modal" },
-            subtitle: { ru: "Всплывающее окно подтверждения согласия со сметой", fr: "Confirmation pop-up validant l'accord du client", en: "Confirmation pop-up stating the quote was successfully accepted" },
-            action: { ru: "Нажмите «OK»", fr: "Appuyez sur « OK »", en: "Tap «OK»" },
+            img: "img/client/9.jpg",
+            fallback: "img/client/14.jpg",
+            targetPos: { top: "80%", left: "50%" },
+            title: { ru: "14. Утверждение сметы (Quote #1)", fr: "14. Validation du Devis", en: "14. Itemized Quote Approval (800 €)" },
+            subtitle: { ru: "Детализация: работа 750 €, материалы 50 €. Кнопки Approve / Reject", fr: "Ventilation : Travaux 750 €, Fournitures 50 € (Total 800 €)", en: "Breakdown: Work €750, Materials €50. Additional payment €800" },
+            action: { ru: "Нажмите «Approve and pay»", fr: "Appuyez sur « Approve and pay »", en: "Tap «Approve and pay»" },
             script: {
-                ru: "Смета официально утверждена. Мастер приступает к физическому выполнению ремонта.",
-                fr: "Le devis est validé. L'artisan peut débuter les travaux de réparation.",
-                en: "The quote is officially accepted. The technician begins the physical repair work."
+                ru: "Проверьте позиции: работа 750 € и материалы 50 €. Нажмите 'Approve and pay' для старта ремонта.",
+                fr: "Vérifiez le devis : 750 € main d'œuvre et 50 € pièces. Cliquez sur 'Approve and pay'.",
+                en: "Review itemized costs: €750 labor and €50 materials. Tap 'Approve and pay' to authorize work."
             }
         },
         {
             id: 15,
             category: { ru: "4. Смета и ремонт", fr: "4. Devis & Travaux", en: "4. Quote & Repair" },
-            img: "img/client/photo_14_2026-09-10_21-51-23.jpg",
-            targetPos: { top: "52%", left: "50%" },
-            title: { ru: "15. Выполнение работ (Work in progress)", fr: "15. Travaux en Cours", en: "15. Work in Progress Status" },
-            subtitle: { ru: "Индикатор выполнения ремонта мастером с возможностью связи", fr: "Statut des travaux en cours avec options d'appel et de chat", en: "Active execution phase with real-time status and master contact options" },
-            action: { ru: "Ожидайте окончания ремонтных работ", fr: "Suivez l'avancement", en: "Monitor repair progress" },
+            img: "img/client/8.jpg",
+            fallback: "img/client/15.jpg",
+            targetPos: { top: "66%", left: "83%" },
+            title: { ru: "15. Смета одобрена (Ready to start)", fr: "15. Devis Validé (Ready to start)", en: "15. Quote Approved & Ready to Start" },
+            subtitle: { ru: "Статус «Approved» — мастер получил подтверждение и приступает к работе", fr: "Statut approuvé : l'artisan a le feu vert pour réparer", en: "Order status shows Approved, specialist gets green light to begin" },
+            action: { ru: "Ожидайте выполнения работ", fr: "Les travaux débutent", en: "Specialist starts the physical repair" },
             script: {
-                ru: "На экране отображается статус 'Work in progress'. При необходимости вы можете написать мастеру в чат.",
-                fr: "Le statut affiche 'Work in progress'. Vous pouvez contacter l'artisan à tout moment.",
-                en: "The screen shows 'Work in progress'. You can chat or communicate with the master at any moment."
+                ru: "Смета официально утверждена клиентом. Мастер приступает к физическому устранению поломки.",
+                fr: "Le devis est approuvé. L'artisan commence immédiatement les travaux.",
+                en: "The quote is officially accepted. The technician begins the physical repair work."
             }
         },
         {
             id: 16,
-            category: { ru: "5. Приемка и оценка", fr: "5. Réception & Avis", en: "5. Review & Acceptance" },
-            img: "img/client/photo_8_2026-09-10_21-51-23.jpg",
-            targetPos: { top: "64%", left: "50%" },
-            title: { ru: "16. Завершение работы мастером", fr: "16. Intervention Achevée", en: "16. Job Completed Notification" },
-            subtitle: { ru: "Статус «Worker completed the job» и переход к приемке", fr: "Notification de clôture des travaux par l'artisan", en: "Order status update indicating the worker has finished all repair tasks" },
-            action: { ru: "Нажмите «Accept work»", fr: "Cliquez sur « Accept work »", en: "Tap «Accept work»" },
+            category: { ru: "4. Смета и ремонт", fr: "4. Devis & Travaux", en: "4. Quote & Repair" },
+            img: "img/client/7.jpg",
+            fallback: "img/client/16.jpg",
+            targetPos: { top: "66%", left: "80%" },
+            title: { ru: "16. Выполнение ремонта (Work in progress)", fr: "16. Travaux en Cours", en: "16. Active Work in Progress" },
+            subtitle: { ru: "Ремонтные работы в процессе выполнения с возможностью связи", fr: "Statut des travaux en cours d'exécution", en: "Active execution phase with real-time status and master contact" },
+            action: { ru: "Следите за ходом выполнения заказа", fr: "Suivez l'avancement", en: "Monitor repair progress" },
             script: {
-                ru: "Мастер завершил работу. Проверьте результат ремонта и нажмите 'Accept work' для закрытия заявки.",
-                fr: "L'artisan a terminé. Inspectez l'installation et cliquez sur 'Accept work' pour clôturer la mission.",
-                en: "The technician has completed the job. Inspect the results and tap 'Accept work' to close the order."
+                ru: "Статус 'Work in progress' показывает активную фазу ремонта. Вы всегда можете написать мастеру.",
+                fr: "Le statut affiche 'Work in progress'. Vous можете échanger avec l'artisan à tout moment.",
+                en: "Screen indicates 'Work in progress'. Repair is actively underway."
             }
         },
         {
             id: 17,
             category: { ru: "5. Приемка и оценка", fr: "5. Réception & Avis", en: "5. Review & Acceptance" },
-            img: "img/client/photo_5_2026-09-10_21-51-23.jpg",
-            targetPos: { top: "65%", left: "50%" },
-            title: { ru: "17. Подтверждение приемки работы", fr: "17. Confirmation de Réception", en: "17. Accept Completed Work Modal" },
-            subtitle: { ru: "Модальное окно подтверждения закрытия заказа («Accept work» / «Not yet»)", fr: "Fenêtre modale de validation finale des travaux", en: "Modal prompt confirming successful repair closure or requesting further work" },
-            action: { ru: "Нажмите «Accept work»", fr: "Appuyez sur « Accept work »", en: "Tap «Accept work»" },
+            img: "img/client/4.jpg",
+            fallback: "img/client/17.jpg",
+            targetPos: { top: "61%", left: "50%" },
+            title: { ru: "17. Завершение работы (Accept work)", fr: "17. Validation des Travaux", en: "17. Worker Completed Job & Accept Work" },
+            subtitle: { ru: "Блок «Worker completed the job» и кнопка закрытия заявки «Accept work»", fr: "Clôture des travaux et bouton de réception « Accept work »", en: "Order completion banner with «Accept work» button to inspect and approve" },
+            action: { ru: "Проверьте работу и нажмите «Accept work»", fr: "Cliquez sur « Accept work »", en: "Tap «Accept work»" },
             script: {
-                ru: "Подтвердите успешное завершение работы в модальном окне, нажав 'Accept work'.",
-                fr: "Confirmez la bonne exécution des travaux en cliquant sur 'Accept work'.",
-                en: "Confirm successful completion in the modal window by tapping 'Accept work'."
+                ru: "Мастер завершил работу. Проверьте исправность прибора и нажмите 'Accept work' для закрытия заказа.",
+                fr: "L'artisan a terminé. Vérifiez l'installation et appuyez sur 'Accept work'.",
+                en: "The technician finished the job. Inspect the results and tap 'Accept work' to close."
             }
         },
         {
             id: 18,
             category: { ru: "5. Приемка и оценка", fr: "5. Réception & Avis", en: "5. Review & Acceptance" },
-            img: "img/client/photo_7_2026-09-10_21-51-23.jpg",
-            targetPos: { top: "78%", left: "50%" },
-            title: { ru: "18. Оценка мастера и отзыв", fr: "18. Notation & Avis Client", en: "18. Leave a Review & 5 Stars" },
-            subtitle: { ru: "Выставление оценки по 5-звездочной шкале и текстовый отзыв", fr: "Attribution des étoiles de satisfaction et commentaire", en: "Selecting star rating from 1 to 5 and writing service review" },
-            action: { ru: "Поставьте звезды и нажмите «Submit review»", fr: "Attribuez vos étoiles et validez", en: "Rate 5 stars and tap «Submit review»" },
+            img: "img/client/3.jpg",
+            fallback: "img/client/18.jpg",
+            targetPos: { top: "77%", left: "50%" },
+            title: { ru: "18. Оценка мастера и отзыв", fr: "18. Notation & Avis", en: "18. Review Worker & 5 Stars" },
+            subtitle: { ru: "5-звездочная шкала, текстовый отзыв и кнопка «Submit review»", fr: "Attribution des étoiles de satisfaction et commentaire", en: "Selecting 5-star rating, writing review comment, and submitting feedback" },
+            action: { ru: "Поставьте оценку и нажмите «Submit review»", fr: "Notez et validez « Submit review »", en: "Rate 5 stars and tap «Submit review»" },
             script: {
-                ru: "Оцените качество обслуживания от 1 до 5 звёзд, напишите пару слов о мастере и нажмите 'Submit review'.",
-                fr: "Notez la prestation de 1 à 5 étoiles, laissez votre commentaire et cliquez sur 'Submit review'.",
-                en: "Rate the specialist from 1 to 5 stars, leave a short review, and tap 'Submit review'."
+                ru: "Оцените качество работы специалиста от 1 до 5 звезд, напишите отзыв и нажмите 'Submit review'.",
+                fr: "Notez la prestation de 1 à 5 étoiles, ajoutez un commentaire et validez.",
+                en: "Rate the specialist 5 stars, leave your review, and tap 'Submit review'."
             }
         },
         {
             id: 19,
-            category: { ru: "5. Приемка и оценка", fr: "5. Réception & Avis", en: "5. Review & Acceptance" },
-            img: "img/client/photo_6_2026-09-10_21-51-23.jpg",
-            targetPos: { top: "58%", left: "50%" },
-            title: { ru: "19. Отзыв отправлен на модерацию", fr: "19. Avis Soumis avec Succès", en: "19. Review Submitted Confirmation" },
-            subtitle: { ru: "Уведомление «Your review was submitted for moderation»", fr: "Message de confirmation d'enregistrement de l'avis", en: "Pop-up confirming your feedback has been submitted for moderation" },
-            action: { ru: "Нажмите «OK»", fr: "Appuyez sur « OK »", en: "Tap «OK»" },
+            category: { ru: "6. Финансы и история", fr: "6. Finances & Historique", en: "6. Billing & Completed Order" },
+            img: "img/client/5.jpg",
+            fallback: "img/client/19.jpg",
+            targetPos: { top: "35%", left: "85%" },
+            title: { ru: "19. Детали закрытого заказа (Итоговый чек)", fr: "19. Reçu Financier Détaillé", en: "19. Completed Order Details (870,00 €)" },
+            subtitle: { ru: "Итоговый чек: Callout (70 €) + Quote (800 €) = 870.00 EUR", fr: "Facture complète : Déplacement 70 € + Devis 800 € = 870.00 €", en: "Financial summary: Callout €70.00 + Quote €800.00 = Total €870.00" },
+            action: { ru: "Ознакомьтесь с финансовым чеком", fr: "Consultez le reçu final", en: "Inspect final financial breakdown" },
             script: {
-                ru: "Ваш отзыв успешно отправлен на модерацию и поможет другим пользователям сервиса.",
-                fr: "Votre avis a été enregistré et sera publié après modération.",
-                en: "Your review has been successfully submitted and helps other users choose certified masters."
+                ru: "В карточке заказа сохраняется детальный расчет: первичный вызов 70 € и согласованная смета 800 €.",
+                fr: "La facture conserve tous les détails : 70 € de déplacement et 800 € de travaux réalisés.",
+                en: "The closed order summary contains full billing details: €70 callout and €800 repair quote."
             }
         },
         {
             id: 20,
-            category: { ru: "6. Финансы и споры", fr: "6. Finances & Litiges", en: "6. Billing & Disputes" },
-            img: "img/client/photo_10_2026-09-10_21-51-23.jpg",
-            targetPos: { top: "65%", left: "50%" },
-            title: { ru: "20. Детали завершенного заказа (Итоговый чек)", fr: "20. Détail Financier & Reçu", en: "20. Completed Order Summary & Receipt" },
-            subtitle: { ru: "Полный расчет: Вызов (70 €) + Смета (530 €) = 600.00 €", fr: "Récapitulatif financier : Déplacement 70 € + Devis 530 € = 600.00 €", en: "Itemized billing summary: Callout (€70) + Quote (€530) = €600.00 Total" },
-            action: { ru: "Ознакомьтесь с финансовым чеком", fr: "Vérifiez le reçu final", en: "Inspect final financial breakdown" },
+            category: { ru: "6. Финансы и история", fr: "6. Finances & Historique", en: "6. Billing & Completed Order" },
+            img: "img/client/2.jpg",
+            fallback: "img/client/20.jpg",
+            targetPos: { top: "20%", left: "75%" },
+            title: { ru: "20. История заказов (My Orders)", fr: "20. Historique des Commandes", en: "20. Orders History & Expenditure" },
+            subtitle: { ru: "Общая сумма трат (2 140 €), список выполненных и отмененных заявок", fr: "Dépenses cumulées (2 140 €) et historique des interventions", en: "Cumulative expenditure (€2,140), closed orders list, and order statuses" },
+            action: { ru: "Проверьте историю вызовов", fr: "Consultez l'historique", en: "Explore order history" },
             script: {
-                ru: "В карточке закрытого заказа сохраняется полная финансовая детализация: вызов 70 € и смета на 530 €.",
-                fr: "La facture finale conserve tous les éléments : 70 € de déplacement et 530 € de devis validé.",
-                en: "The closed order summary contains full billing details: €70 callout and €530 approved repair quote."
+                ru: "Раздел 'My Orders' сохраняет всю историю вызовов, статус каждого заказа и общую сумму расходов.",
+                fr: "Retrouvez l'historique complet de vos interventions et le total de vos dépenses.",
+                en: "Under 'My Orders', monitor all past service orders, completion statuses, and expenses."
             }
         },
         {
             id: 21,
-            category: { ru: "6. Финансы и споры", fr: "6. Finances & Litiges", en: "6. Billing & Disputes" },
-            img: "img/client/photo_2_2026-09-10_21-51-23.jpg",
-            targetPos: { top: "32%", left: "70%" },
-            title: { ru: "21. История всех заказов (My Orders)", fr: "21. Historique des Commandes", en: "21. Orders History & Expenditure" },
-            subtitle: { ru: "Статистика общих трат (670 €), активные заказы и история закрытых", fr: "Suivi des dépenses globales et historique complet des interventions", en: "Overview of total spent (€670), active orders count, and completed order history" },
-            action: { ru: "Перейдите во вкладку History", fr: "Consultez l'onglet History", en: "Explore History tab" },
+            category: { ru: "6. Финансы и история", fr: "6. Finances & Historique", en: "6. Billing & Completed Order" },
+            img: "img/client/1.jpg",
+            fallback: "img/client/21.jpg",
+            targetPos: { top: "74%", left: "50%" },
+            title: { ru: "21. Профиль и настройки клиента", fr: "21. Profil & Préférences", en: "21. Client Profile & Preferences" },
+            subtitle: { ru: "Персональные данные, переключение темы (Light/Dark) и языка", fr: "Données personnelles, thème et langue", en: "Personal data, appearance preferences (Light/Dark), and language" },
+            action: { ru: "Настройте тему и параметры приложения", fr: "Ajustez vos préférences", en: "Customize app theme and language" },
             script: {
-                ru: "В разделе 'My Orders' сохраняется история всех вызовов, статус каждого заказа и общая сумма расходов.",
-                fr: "Dans l'onglet 'My Orders', retrouvez l'ensemble de vos commandes passées et vos dépenses totales.",
-                en: "Under 'My Orders', monitor all past service orders, completion statuses, and overall expenses."
-            }
-        },
-        {
-            id: 22,
-            category: { ru: "6. Финансы и споры", fr: "6. Finances & Litiges", en: "6. Billing & Disputes" },
-            img: "img/client/photo_12_2026-09-10_21-51-23.jpg",
-            targetPos: { top: "62%", left: "50%" },
-            title: { ru: "22. Поддержка и открытие спора (Dispute)", fr: "22. Support & Litiges", en: "22. Payment Support & Dispute Case" },
-            subtitle: { ru: "Форма открытия кейса на возврат или оспаривание при возникновении вопросов", fr: "Ouverture d'un dossier de réclamation ou demande de remboursement", en: "Filing a dispute or refund case with explanation and evidence attachment" },
-            action: { ru: "Выберите причину и оформите обращение", fr: "Créez une réclamation si besoin", en: "Open dispute case if needed" },
-            script: {
-                ru: "При возникновении вопросов по качеству или оплате вы всегда можете открыть спор или запросить возврат через поддержку.",
-                fr: "En cas de contestation sur une prestation, vous pouvez ouvrir un dossier de litige via ce formulaire.",
-                en: "If any disagreement arises regarding billing or repairs, open a dispute or refund case directly via support."
+                ru: "В профиле клиента можно изменить имя, телефон, email, а также переключить тему оформления и язык.",
+                fr: "Gérez vos informations personnelles, le thème visuel et la langue de l'application.",
+                en: "In your profile, manage personal information, app display theme, and preferred language."
             }
         }
     ];
 
-    /* CHRONOLOGICAL WORKER / SPECIALIST APP JOURNEY */
+    /* CHRONOLOGICAL WORKER / SPECIALIST APP JOURNEY (18 SCREENS) */
     const workerSlides = [
         {
             id: 1,
             category: { ru: "1. Смена и Оффер", fr: "1. Prise de Service", en: "1. Shift & Dispatch Offer" },
-            hasAnimatedMap: true,
-            mapType: "worker_nav",
-            img: "img/worker/photo_25_2026-09-10_21-52-11.jpg",
-            targetPos: { top: "13%", left: "70%" },
-            title: { ru: "1. Выход на смену (Online Toggle)", fr: "1. Prise de Service (Online)", en: "1. Shift Start & Online Switch" },
-            subtitle: { ru: "Включение тумблера Online и активация поиска заказов на карте", fr: "Bascule de l'interrupteur en ligne pour recevoir des missions", en: "Switching the top Online toggle to activate shift readiness on the radar" },
-            action: { ru: "Переведите тумблер в положение «Online»", fr: "Activez le mode Online", en: "Toggle switch to Online" },
+            img: "img/worker/1.jpg",
+            fallback: "img/worker/1.jpg",
+            targetPos: { top: "50%", left: "60%" },
+            title: { ru: "1. Вход мастера (Welcome to Byfro)", fr: "1. Connexion Artisan", en: "1. Worker Phone Authentication" },
+            subtitle: { ru: "Ввод номера телефона мастера для входа в рабочий аккаунт", fr: "Saisie du numéro mobile professionnel", en: "Specialist mobile login screen with phone prefix and Get Code action" },
+            action: { ru: "Введите номер телефона и нажмите «Get Code»", fr: "Appuyez sur « Get Code »", en: "Enter phone number and tap «Get Code»" },
             script: {
-                ru: "Для начала работы переведите верхний тумблер в положение Online. Система активирует вас на карте города.",
-                fr: "Pour débuter votre journée, activez l'interrupteur Online en haut. Vous apparaissez disponible sur la carte.",
-                en: "To start receiving jobs, switch the top toggle to Online. The system registers your availability on the radar."
+                ru: "Откройте приложение Byfro Worker. Введите номер телефона и нажмите 'Get Code' для получения проверочного кода.",
+                fr: "Ouvrez Byfro Worker. Saisissez votre numéro de téléphone et appuyez sur 'Get Code'.",
+                en: "Open Byfro Worker. Enter your registered phone number and tap 'Get Code'."
             }
         },
         {
             id: 2,
             category: { ru: "1. Смена и Оффер", fr: "1. Prise de Service", en: "1. Shift & Dispatch Offer" },
-            img: "img/worker/photo_10_2026-09-10_21-52-10.jpg",
-            targetPos: { top: "16%", left: "50%" },
-            title: { ru: "2. Индикаторы готовности и панель смены", fr: "2. Voyants de Disponibilité", en: "2. Readiness Badges & Active Shift" },
-            subtitle: { ru: "Проверка трех системных индикаторов: STATUS, LOCATION, ELIGIBILITY", fr: "Vérification des 3 indicateurs : Statut, Localisation et Éligibilité", en: "Checking all three system operational indicators: Online, Location Ready, Eligibility Ready" },
-            action: { ru: "Убедитесь, что все 3 индикатора зеленые", fr: "Vérifiez les indicateurs au vert", en: "Verify all three badges are green" },
+            img: "img/worker/3.jpg",
+            fallback: "img/worker/2.jpg",
+            targetPos: { top: "59%", left: "50%" },
+            title: { ru: "2. Ввод SMS-кода (Verification)", fr: "2. Code SMS de Vérification", en: "2. Verification Code Login" },
+            subtitle: { ru: "Ввод 6 цифр проверочного кода безопасности и кнопка «Login»", fr: "Saisie du code de sécurité à 6 chiffres", en: "Entering 6-digit SMS verification code and tapping Login" },
+            action: { ru: "Введите код и нажмите «Login»", fr: "Saisissez le code et validez", en: "Enter code and tap «Login»" },
             script: {
-                ru: "Убедитесь, что статус Online, сигнал GPS и допуск по кошельку горят зеленым цветом. Вы готовы получать заказы.",
-                fr: "Vérifiez que votre statut Online, votre signal GPS et votre solde d'éligibilité sont tous au vert.",
-                en: "Ensure Status, Location, and Wallet Eligibility all display green. You are ready to receive job dispatches."
+                ru: "Введите 6-значный код из SMS для быстрого и безопасного входа в рабочий профиль мастера.",
+                fr: "Saisissez le code SMS reçu pour vous connecter à votre espace artisan.",
+                en: "Enter the 6-digit SMS code to verify identity and access your specialist dashboard."
             }
         },
         {
             id: 3,
             category: { ru: "1. Смена и Оффер", fr: "1. Prise de Service", en: "1. Shift & Dispatch Offer" },
-            img: "img/worker/photo_24_2026-09-10_21-52-11.jpg",
-            targetPos: { top: "60%", left: "70%" },
-            title: { ru: "3. Поступление нового заказа (New order offer)", fr: "3. Offre de Mission Entrante", en: "3. Incoming Order Offer (30s Timer)" },
-            subtitle: { ru: "Срочное оповещение с адресом клиента, категорией и таймером принятия", fr: "Alerte prioritaire affichant l'adresse et le métier requis", en: "High-priority incoming job alert with customer address and Accept / Decline actions" },
-            action: { ru: "Нажмите «Accept» для принятия заказа", fr: "Appuyez sur « Accept »", en: "Tap «Accept» to confirm" },
+            hasAnimatedMap: true,
+            mapType: "worker_nav",
+            img: "img/worker/4.jpg",
+            fallback: "img/worker/3.jpg",
+            targetPos: { top: "20%", left: "70%" },
+            title: { ru: "3. Выход на смену (Online Toggle)", fr: "3. Prise de Service (Online)", en: "3. Shift Start & Online Switch" },
+            subtitle: { ru: "Включение тумблера Online и проверка 3 индикаторов готовности", fr: "Bascule de l'interrupteur en ligne et voyants de disponibilité", en: "Toggling Online switch and checking operational indicators (Status, Location, Eligibility)" },
+            action: { ru: "Переведите верхний тумблер в положение «Online»", fr: "Activez le mode Online", en: "Toggle switch to Online" },
             script: {
-                ru: "При поступлении заказа раздается сигнал и появляется адрес вызова. Нажмите 'Accept', чтобы закрепить заказ за собой.",
-                fr: "Une alerte retentit avec l'adresse du client. Cliquez sur 'Accept' pour accepter la mission avant la fin du décompte.",
-                en: "When a dispatch arrives, an audible alert sounds with the address. Tap 'Accept' to assign the job to yourself."
+                ru: "Для начала смены переведите тумблер в положение Online. Индикаторы Status, Location и Eligibility загорятся зеленым.",
+                fr: "Pour débuter votre journée, activez l'interrupteur Online en haut. Vos indicateurs passent au vert.",
+                en: "To start receiving jobs, switch the top toggle to Online. Ensure Status, Location, and Eligibility are green."
             }
         },
         {
             id: 4,
-            category: { ru: "2. Навигация и прибытие", fr: "2. Guidage & Arrivée", en: "2. GPS Navigation & Arrival" },
-            img: "img/worker/photo_23_2026-09-10_21-52-11.jpg",
-            targetPos: { top: "85%", left: "50%" },
-            title: { ru: "4. Карточка заказа и фото от клиента", fr: "4. Fiche de Mission & Photos", en: "4. Assigned Order & Client Photos" },
-            subtitle: { ru: "Просмотр гарантированного тарифа вызова (70 €) и прикрепленных фото", fr: "Vérification des frais de déplacement (70 €) et photos de la panne", en: "Reviewing guaranteed callout fee (70 €) and inspectable damage photos" },
-            action: { ru: "Изучите фото поломки перед выездом", fr: "Examinez les photos du client", en: "Inspect photos to prepare correct tools" },
+            category: { ru: "1. Смена и Оффер", fr: "1. Prise de Service", en: "1. Shift & Dispatch Offer" },
+            img: "img/worker/14.jpg",
+            fallback: "img/worker/4.jpg",
+            targetPos: { top: "56%", left: "70%" },
+            title: { ru: "4. Оффер нового заказа (New order offer)", fr: "4. Offre de Mission Entrante", en: "4. Incoming Order Offer Card" },
+            subtitle: { ru: "Срочное оповещение с адресом клиента, категорией и кнопкой «Accept»", fr: "Alerte de mission entrante avec adresse et bouton « Accept »", en: "Incoming dispatch notification with client address, problem note, and Accept button" },
+            action: { ru: "Нажмите «Accept» для закрепления заказа", fr: "Appuyez sur « Accept »", en: "Tap «Accept» to confirm" },
             script: {
-                ru: "В карточке заказа отображается гарантированная оплата вызова (70 €) и фотографии поломки, прикрепленные клиентом.",
-                fr: "La fiche détaillée affiche votre forfait déplacement garanti de 70 € et les photos envoyées par le client.",
-                en: "The order card displays the guaranteed €70 callout fee and client damage photos so you can prepare tools."
+                ru: "При поступлении заказа раздается звуковой сигнал. Изучите адрес и нажмите 'Accept', чтобы закрепить заказ за собой.",
+                fr: "Une alerte retentit avec l'adresse du client. Cliquez sur 'Accept' pour accepter la mission.",
+                en: "When a dispatch arrives, an audible alert sounds. Tap 'Accept' to assign the job to yourself."
             }
         },
         {
             id: 5,
-            category: { ru: "2. Навигация и прибытие", fr: "2. Guidage & Arrivée", en: "2. GPS Navigation & Arrival" },
-            hasAnimatedMap: true,
-            mapType: "worker_nav",
-            img: "img/worker/photo_9_2026-09-10_21-52-10.jpg",
-            targetPos: { top: "35%", left: "70%" },
-            title: { ru: "5. GPS-навигация и прибытие (Drive to client)", fr: "5. Guidage GPS & Arrivée", en: "5. Turn-by-Turn GPS Navigation & Arrival" },
-            subtitle: { ru: "Поездка по маршруту (ETA < 1 мин, 37 м) и отметка прибытия «Start inspection»", fr: "Navigation en direct vers le domicile du client (37 m)", en: "Driving along the route (ETA < 1 min, 37 m) and tapping doorstep arrival check-in" },
-            action: { ru: "По прибытии к дому нажмите «Start inspection»", fr: "Appuyez sur « Start inspection »", en: "Tap «Start inspection» at address" },
+            category: { ru: "2. Навигация и прибытие", fr: "2. Guidage & Arrivée", en: "2. Assigned Order & Client Photos" },
+            img: "img/worker/18.jpg",
+            fallback: "img/worker/5.jpg",
+            targetPos: { top: "72%", left: "50%" },
+            title: { ru: "5. Детали вызова и фото от клиента", fr: "5. Fiche de Mission & Photos", en: "5. Assigned Order & Client Photos" },
+            subtitle: { ru: "Гарантированный тариф вызова (70 €) и блок фотографий от клиента", fr: "Frais de déplacement garantis (70 €) et photos de la panne", en: "Guaranteed callout fee (€70) and client damage photos for tool preparation" },
+            action: { ru: "Изучите фото поломки перед выездом", fr: "Examinez les photos du client", en: "Inspect photos to prepare correct tools" },
             script: {
-                ru: "Используйте встроенную навигацию для проезда к объекту. Прибыв по адресу, нажмите 'Start inspection'.",
-                fr: "Suivez le guidage GPS vers le client. Une fois arrivé sur place, cliquez sur 'Start inspection'.",
-                en: "Follow GPS navigation to the address. Upon arriving at the building, tap 'Start inspection' to begin."
+                ru: "В карточке заказа отображается гарантированная оплата вызова (70 €) и фотографии неисправности от клиента.",
+                fr: "La fiche détaillée affiche votre forfait déplacement de 70 € et les photos envoyées par le client.",
+                en: "The order card displays the guaranteed €70 callout fee and client damage photos."
             }
         },
         {
             id: 6,
-            category: { ru: "3. Диагностика и смета", fr: "3. Diagnostic & Devis", en: "3. Inspection & Quote" },
-            img: "img/worker/photo_8_2026-09-10_21-52-10.jpg",
-            targetPos: { top: "56%", left: "50%" },
-            title: { ru: "6. Подготовка расчета сметы (Prepare quote)", fr: "6. Préparation du Devis", en: "6. Prepare Itemized Quote Card" },
-            subtitle: { ru: "Кнопка открытия формы детального расчета ремонта после осмотра", fr: "Accès au formulaire de chiffrage des travaux", en: "Opening the itemized quote sheet after physical inspection" },
+            category: { ru: "2. Навигация и прибытие", fr: "2. Guidage & Arrivée", en: "2. GPS Route Navigation" },
+            hasAnimatedMap: true,
+            mapType: "worker_nav",
+            img: "img/worker/13.jpg",
+            fallback: "img/worker/6.jpg",
+            targetPos: { top: "50%", left: "50%" },
+            title: { ru: "6. GPS-маршрут поездки к клиенту", fr: "6. Guidage GPS vers le Client", en: "6. Turn-by-Turn Route Navigation" },
+            subtitle: { ru: "Навигация по улицам города с проложенным бирюзовым маршрутом", fr: "Navigation en direct avec itinéraire tracé sur la carte", en: "Turn-by-turn route guidance driving directly to customer address" },
+            action: { ru: "Следуйте по проложенному маршруту", fr: "Suivez l'itinéraire GPS", en: "Drive along the highlighted route" },
+            script: {
+                ru: "Следуйте по проложенному навигатором маршруту к объекту заказчика.",
+                fr: "Suivez le tracé GPS optimisé pour vous rendre rapidement chez le client.",
+                en: "Follow the integrated GPS route guidance to reach the customer building."
+            }
+        },
+        {
+            id: 7,
+            category: { ru: "2. Навигация и прибытие", fr: "2. Guidage & Arrivée", en: "2. Doorstep Arrival & Inspection" },
+            img: "img/worker/12.jpg",
+            fallback: "img/worker/7.jpg",
+            targetPos: { top: "52%", left: "75%" },
+            title: { ru: "7. Прибытие на объект (Start inspection)", fr: "7. Arrivée sur Place (5 m)", en: "7. Doorstep Arrival (ETA < 1 min, 5 m)" },
+            subtitle: { ru: "Расстояние 5 м, ETA < 1 мин и кнопка «Start inspection» для начала осмотра", fr: "Arrivée imminente et bouton « Start inspection »", en: "Arrival confirmation (ETA < 1 min, 5 m) and «Start inspection» action" },
+            action: { ru: "Нажмите «Start inspection» у двери клиента", fr: "Cliquez sur « Start inspection »", en: "Tap «Start inspection» at doorstep" },
+            script: {
+                ru: "Подъехав по адресу (дистанция 5 метров), нажмите кнопку 'Start inspection' для начала диагностики.",
+                fr: "Une fois arrivé devant la porte, cliquez sur 'Start inspection' pour débuter le diagnostic.",
+                en: "Upon reaching the address (distance 5 m), tap 'Start inspection' to begin physical diagnostics."
+            }
+        },
+        {
+            id: 8,
+            category: { ru: "3. Диагностика и смета", fr: "3. Diagnostic & Devis", en: "3. Inspection & Quote Preparation" },
+            img: "img/worker/17.jpg",
+            fallback: "img/worker/8.jpg",
+            targetPos: { top: "70%", left: "70%" },
+            title: { ru: "8. Подготовка сметы (Prepare quote)", fr: "8. Préparation du Devis", en: "8. Prepare Quote: Open Form" },
+            subtitle: { ru: "Блок «Prepare quote» с кнопкой перехода «Open quote form»", fr: "Accès au formulaire de chiffrage после осмотра", en: "Opening the itemized quote sheet after physical inspection" },
             action: { ru: "Нажмите «Open quote form»", fr: "Appuyez sur « Open quote form »", en: "Tap «Open quote form»" },
             script: {
-                ru: "После осмотра проводки или оборудования нажмите 'Open quote form' для составления расчета.",
+                ru: "После осмотра проводки или оборудования нажмите 'Open quote form' для внесения стоимости ремонта.",
                 fr: "Après l'examen technique de la panne, cliquez sur 'Open quote form' pour chiffrer l'intervention.",
                 en: "After diagnosing the electrical or plumbing issue, tap 'Open quote form' to build the estimate."
             }
         },
         {
-            id: 7,
-            category: { ru: "3. Диагностика и смета", fr: "3. Diagnostic & Devis", en: "3. Inspection & Quote" },
-            img: "img/worker/photo_7_2026-09-10_21-52-10.jpg",
-            targetPos: { top: "88%", left: "70%" },
-            title: { ru: "7. Форма сметы (Inspection quote)", fr: "7. Saisie du Devis Numérique", en: "7. Quote Form: Labor, Parts & Notes" },
-            subtitle: { ru: "Ввод стоимости работы (500 €), материалов (30 €), комментария и отправка клиенту", fr: "Saisie de la main d'œuvre (500 €) et des pièces (30 €)", en: "Entering labor amount (500 €), parts cost (30 €), notes, and tapping Submit" },
-            action: { ru: "Укажите суммы и нажмите «Submit quote»", fr: "Validez « Submit quote »", en: "Enter amounts and tap «Submit quote»" },
-            script: {
-                ru: "Укажите стоимость работы и необходимых запчастей, напишите комментарий и нажмите 'Submit quote' для отправки клиенту.",
-                fr: "Renseignez le montant de la main d'œuvre et des fournitures, puis cliquez sur 'Submit quote'.",
-                en: "Enter work labor and materials amounts, add a descriptive comment, and tap 'Submit quote' to send to client."
-            }
-        },
-        {
-            id: 8,
-            category: { ru: "3. Диагностика и смета", fr: "3. Diagnostic & Devis", en: "3. Inspection & Quote" },
-            img: "img/worker/photo_3_2026-09-10_21-52-10.jpg",
-            targetPos: { top: "25%", left: "50%" },
-            title: { ru: "8. Уведомление: смета утверждена клиентом", fr: "8. Confirmation d'Accord Client", en: "8. Quote Approved Notification" },
-            subtitle: { ru: "Системное оповещение: клиент одобрил смету на сумму 530.00 EUR", fr: "Alerte confirmant que le client a validé le devis (530 €)", en: "System notification confirming customer approved the 530.00 EUR quote" },
-            action: { ru: "Ознакомьтесь со статусом «ready_to_start»", fr: "Vérifiez le statut prêt", en: "Check ready_to_start status" },
-            script: {
-                ru: "Клиент утвердил смету в своем приложении. Заказ переходит в статус готовности к началу работ.",
-                fr: "Le client a validé le devis sur son écran. Vous avez le feu vert pour démarrer.",
-                en: "The client approved the quote on their device. The order updates to ready_to_start."
-            }
-        },
-        {
             id: 9,
-            category: { ru: "4. Ремонт и закрытие", fr: "4. Réparation & Clôture", en: "4. Execution & Completion" },
-            img: "img/worker/photo_6_2026-09-10_21-52-10.jpg",
-            targetPos: { top: "39%", left: "50%" },
-            title: { ru: "9. Старт выполнения работ (Start work)", fr: "9. Démarrage des Travaux", en: "9. Start Work Authorization" },
-            subtitle: { ru: "Активация кнопки «Start work» для фиксации начала физического ремонта", fr: "Bouton « Start work » pour enclencher le suivi des réparations", en: "Tapping green «Start work» button to log active repair timing" },
-            action: { ru: "Нажмите «Start work»", fr: "Appuyez sur « Start work »", en: "Tap «Start work»" },
+            category: { ru: "3. Диагностика и смета", fr: "3. Diagnostic & Devis", en: "3. Quote Input & Form" },
+            img: "img/worker/16.jpg",
+            fallback: "img/worker/9.jpg",
+            targetPos: { top: "47%", left: "50%" },
+            title: { ru: "9. Форма расчета сметы (Submit quote)", fr: "9. Saisie du Devis Numérique", en: "9. Digital Quote Form: Labor & Materials" },
+            subtitle: { ru: "Поля ввода стоимости работы (Work amount) и запчастей (Materials amount)", fr: "Saisie de la main d'œuvre, des pièces et commentaire", en: "Entering labor amount, parts cost, and explanation notes" },
+            action: { ru: "Заполните суммы и прикрепите фото", fr: "Renseignez les montants", en: "Input labor and materials amounts" },
             script: {
-                ru: "Нажмите 'Start work', чтобы зафиксировать начало выполнения ремонта и приступить к работе.",
-                fr: "Appuyez sur 'Start work' pour enregistrer le début officiel de la réparation.",
-                en: "Tap 'Start work' to log the beginning of repair operations and start fixing the issue."
+                ru: "Введите стоимость работы, необходимых запчастей и прикрепите фото неисправности.",
+                fr: "Renseignez le montant de la main d'œuvre, des pièces et joignez les photos.",
+                en: "Enter the labor amount, materials costs, and attach supporting diagnostic photos."
             }
         },
         {
             id: 10,
-            category: { ru: "4. Ремонт и закрытие", fr: "4. Réparation & Clôture", en: "4. Execution & Completion" },
-            img: "img/worker/photo_5_2026-09-10_21-52-10.jpg",
-            targetPos: { top: "40%", left: "30%" },
-            title: { ru: "10. Панель управления активным заказом", fr: "10. Gestion du Chantier Active", en: "10. Active Order Management" },
-            subtitle: { ru: "Кнопки «Complete» (завершить) и «Cancel» (отменить) во время работы", fr: "Options de finalisation ou d'annulation pendant l'intervention", en: "Action controls to mark job complete or handle cancellations" },
-            action: { ru: "По завершении ремонта нажмите «Complete»", fr: "Cliquez sur « Complete » une fois fini", en: "Tap «Complete» when finished" },
+            category: { ru: "3. Диагностика и смета", fr: "3. Diagnostic & Devis", en: "3. Filled Quote Submission" },
+            img: "img/worker/24.jpg",
+            fallback: "img/worker/10.jpg",
+            targetPos: { top: "78%", left: "70%" },
+            title: { ru: "10. Отправка сметы клиенту (750 € + 50 €)", fr: "10. Envoi du Devis au Client", en: "10. Submitting Itemized Quote to Client" },
+            subtitle: { ru: "Заполненная смета: работа 750 €, материалы 50 €, фото (1/5) и кнопка отправки", fr: "Devis complété : 750 € main d'œuvre, 50 € pièces, validation", en: "Completed quote sheet: Work 750 €, Materials 50 €, photos attached, Submit button" },
+            action: { ru: "Нажмите «Submit quote»", fr: "Cliquez sur « Submit quote »", en: "Tap «Submit quote»" },
             script: {
-                ru: "Во время ремонта активна карточка заказа. Когда все работы выполнены, нажмите кнопку 'Complete'.",
-                fr: "Une fois tous les travaux achevés, cliquez sur le bouton 'Complete' pour soumettre à réception.",
-                en: "During repairs, the active order panel remains available. When done, tap 'Complete'."
+                ru: "Проверьте введенные данные (750 € работа, 50 € материалы) и нажмите 'Submit quote' для отправки сметы клиенту.",
+                fr: "Vérifiez vos montants (750 € travail, 50 € pièces) puis appuyez sur 'Submit quote'.",
+                en: "Verify the entered amounts (€750 labor, €50 materials) and tap 'Submit quote' to send to client."
             }
         },
         {
             id: 11,
-            category: { ru: "4. Ремонт и закрытие", fr: "4. Réparation & Clôture", en: "4. Execution & Completion" },
-            img: "img/worker/photo_4_2026-09-10_21-52-10.jpg",
-            targetPos: { top: "58%", left: "50%" },
-            title: { ru: "11. Подтверждение завершения заказа", fr: "11. Confirmation de Clôture", en: "11. Confirm Order Completion Modal" },
-            subtitle: { ru: "Всплывающее окно «Mark this order as complete?» (кнопка «Yes»)", fr: "Fenêtre de validation : Confirmer la fin de mission", en: "Modal prompt confirming all repair work is completed (tap «Yes»)" },
-            action: { ru: "Нажмите «Yes» для закрытия заказа", fr: "Appuyez sur « Yes »", en: "Tap «Yes»" },
+            category: { ru: "3. Диагностика и смета", fr: "3. Diagnostic & Devis", en: "3. Quote Pending Approval" },
+            img: "img/worker/23.jpg",
+            fallback: "img/worker/11.jpg",
+            targetPos: { top: "55%", left: "60%" },
+            title: { ru: "11. Ожидание ответа клиента (Quote pending)", fr: "11. En Attente d'Accord Client", en: "11. Quote Pending Client Approval" },
+            subtitle: { ru: "Статус «Quote sent. Waiting for the client to approve or reject it»", fr: "Devis transmis : en attente d'approbation par le client", en: "Status indicating quote has been dispatched to client device" },
+            action: { ru: "Ожидайте подтверждения сметы клиентом", fr: "Patientez pendant la validation", en: "Wait for client quote acceptance" },
             script: {
-                ru: "Подтвердите окончание работ, нажав 'Yes'. Клиент получит уведомление о необходимости принять работу.",
-                fr: "Confirmez en appuyant sur 'Yes'. Le client recevra l'invitation à valider la réception.",
-                en: "Confirm completion by tapping 'Yes'. The client receives an alert to inspect and accept the job."
+                ru: "Смета отправлена на экран клиента. Приложение ожидает его подтверждения или отклонения.",
+                fr: "Le devis est sur l'écran du client. L'application attend sa validation pour continuer.",
+                en: "Quote sent. Waiting for the client to review and approve the estimate."
             }
         },
         {
             id: 12,
-            category: { ru: "5. Финансы и Кошелек", fr: "5. Finances & Portefeuille", en: "5. Earnings & Wallet" },
-            img: "img/worker/photo_18_2026-09-10_21-52-11.jpg",
-            targetPos: { top: "92%", left: "50%" },
-            title: { ru: "12. Встроенный чат по заказу (Order #43)", fr: "12. Messagerie Intégrée", en: "12. In-App Order Messaging Chat" },
-            subtitle: { ru: "Прямая связь с клиентом для уточнения деталей доступа или инструкций", fr: "Communication directe avec le client pour tout échange", en: "Direct in-app messaging channel with customer for access and updates" },
-            action: { ru: "Используйте чат при необходимости", fr: "Échangez par chat", en: "Use chat for client communication" },
+            category: { ru: "3. Диагностика и смета", fr: "3. Diagnostic & Devis", en: "3. Quote Approved Notification" },
+            img: "img/worker/25.jpg",
+            fallback: "img/worker/12.jpg",
+            targetPos: { top: "26%", left: "50%" },
+            title: { ru: "12. Уведомление: Смета одобрена (800 EUR)", fr: "12. Alerte Devis Approuvé (800 €)", en: "12. Push Alert: Quote Approved (800 EUR)" },
+            subtitle: { ru: "Уведомление «quote-approved»: смета одобрена, статус ready_to_start", fr: "Notification confirmant que le client a validé le devis (800 €)", en: "System notification confirming customer approved 800.00 EUR quote" },
+            action: { ru: "Ознакомьтесь со статусом готовности", fr: "Consultez l'accord", en: "Check ready_to_start status" },
             script: {
-                ru: "Встроенный чат позволяет оперативно связаться с клиентом для уточнения кода домофона или деталей заказа.",
-                fr: "Le chat intégré vous permet de communiquer directement avec le client à tout moment.",
-                en: "In-app chat allows direct communication with the client regarding gate codes or access details."
+                ru: "Клиент одобрил смету на сумму 800.00 EUR. Заказ переходит в статус готовности к началу работ.",
+                fr: "Le client a validé le devis de 800.00 €. Vous avez l'autorisation de démarrer.",
+                en: "Customer approved the 800.00 EUR quote. Order updates to ready_to_start."
             }
         },
         {
             id: 13,
-            category: { ru: "5. Финансы и Кошелек", fr: "5. Finances & Portefeuille", en: "5. Earnings & Wallet" },
-            img: "img/worker/photo_20_2026-09-10_21-52-11.jpg",
-            targetPos: { top: "60%", left: "50%" },
-            title: { ru: "13. Детализация дохода за заказ", fr: "13. Bilan Financier de la Mission", en: "13. Completed Order Financial Breakdown" },
-            subtitle: { ru: "Финансовая сводка: Gross 1 070 €, чистый заработок Net earning 1 060 €", fr: "Récapitulatif : Montant brut 1 070 €, Revenu net artisan 1 060 €", en: "Financial summary showing Gross amount (€1,070) and Net specialist earnings (€1,060)" },
-            action: { ru: "Проверьте начисление средств", fr: "Consultez le revenu net", en: "Inspect net earnings" },
+            category: { ru: "4. Ремонт и закрытие", fr: "4. Réparation & Clôture", en: "4. Start Work Authorization" },
+            img: "img/worker/22.jpg",
+            fallback: "img/worker/13.jpg",
+            targetPos: { top: "38%", left: "50%" },
+            title: { ru: "13. Старт выполнения работ (Start work)", fr: "13. Démarrage des Travaux", en: "13. Ready To Start -> Tap «Start work»" },
+            subtitle: { ru: "Статус «Ready To Start» и зеленая кнопка «Start work» для таймера работ", fr: "Bouton « Start work » pour enclencher le suivi du chantier", en: "Tapping green «Start work» button to log active repair work" },
+            action: { ru: "Нажмите «Start work» для начала ремонта", fr: "Appuyez sur « Start work »", en: "Tap «Start work» to begin repair" },
             script: {
-                ru: "В карточке завершенного заказа отображается полная финансовая сводка: общая сумма и ваш чистый доход.",
-                fr: "La fiche de mission clôturée présente le montant total facturé ainsi que votre revenu net perçu.",
-                en: "The completed order card presents the financial breakdown: total gross amount and your net profit."
+                ru: "Нажмите 'Start work', чтобы зафиксировать начало выполнения ремонта и приступить к устранению поломки.",
+                fr: "Appuyez sur 'Start work' pour enregistrer le début officiel des travaux de réparation.",
+                en: "Tap 'Start work' to log the beginning of repair operations and start fixing the issue."
             }
         },
         {
             id: 14,
-            category: { ru: "5. Финансы и Кошелек", fr: "5. Finances & Portefeuille", en: "5. Earnings & Wallet" },
-            img: "img/worker/photo_17_2026-09-10_21-52-11.jpg",
-            targetPos: { top: "28%", left: "50%" },
-            title: { ru: "14. История заказов и общая статистика", fr: "14. Historique & Revenus Cumulés", en: "14. Orders History & Cumulative Earnings" },
-            subtitle: { ru: "Сводка: 10 выполненных заказов, 9 678 € чистый доход, 240 € комиссия сервиса", fr: "Statistiques : 10 missions terminées, 9 678 € nets générés", en: "Dashboard tracking 10 completed jobs, €9,678 net earned, and service fee commission" },
-            action: { ru: "Контролируйте вашу общую статистику", fr: "Suivez vos performances", en: "Monitor total earnings performance" },
+            category: { ru: "4. Ремонт и закрытие", fr: "4. Réparation & Clôture", en: "4. Active Execution & Complete" },
+            img: "img/worker/21.jpg",
+            fallback: "img/worker/14.jpg",
+            targetPos: { top: "40%", left: "45%" },
+            title: { ru: "14. Ремонт и завершение заказа (Complete)", fr: "14. Clôture des Travaux (Complete)", en: "14. Work In Progress & Complete Button" },
+            subtitle: { ru: "Статус «In Progress» с кнопками «Complete» (завершить) и «Cancel»", fr: "Chantier en cours avec bouton de finalisation « Complete »", en: "Active execution phase with «Complete» button to submit for client inspection" },
+            action: { ru: "По окончании ремонта нажмите «Complete»", fr: "Cliquez sur « Complete »", en: "Tap «Complete» when finished" },
             script: {
-                ru: "В истории заказов доступна статистика за весь период: количество выполненных заявок, чистый доход и комиссия.",
-                fr: "L'historique consigne vos performances globales : total des missions, gains nets et commissions.",
-                en: "Order history tracks your cumulative performance: completed jobs, net revenue, and platform fees."
+                ru: "Когда все работы выполнены, нажмите кнопку 'Complete'. Заказ будет передан клиенту на финальную приемку.",
+                fr: "Une fois la réparation terminée, cliquez sur 'Complete' pour soumettre les travaux à la réception.",
+                en: "When physical repairs are finished, tap 'Complete' to submit the job for customer acceptance."
             }
         },
         {
             id: 15,
-            category: { ru: "5. Финансы и Кошелек", fr: "5. Finances & Portefeuille", en: "5. Earnings & Wallet" },
-            img: "img/worker/photo_2_2026-09-10_21-52-10.jpg",
-            targetPos: { top: "78%", left: "38%" },
-            title: { ru: "15. Кошелек мастера (Wallet Balance)", fr: "15. Portefeuille Artisan", en: "15. Specialist Wallet & Readiness Balance" },
-            subtitle: { ru: "Баланс (950.00 €), доступно к выводу (Withdrawable) и статус допуска к заказам", fr: "Solde disponible (950 €), fonds retirables et éligibilité", en: "Wallet balance (€950), withdrawable funds, and order eligibility status" },
-            action: { ru: "Нажмите «Withdraw» для вывода денег", fr: "Cliquez sur « Withdraw »", en: "Tap «Withdraw»" },
+            category: { ru: "5. Финансы и Кошелек", fr: "5. Finances & Portefeuille", en: "5. Specialist Earnings & History" },
+            img: "img/worker/2.jpg",
+            fallback: "img/worker/15.jpg",
+            targetPos: { top: "20%", left: "50%" },
+            title: { ru: "15. История заказов и статистика дохода", fr: "15. Historique & Revenus Cumulés", en: "15. Orders History & Cumulative Earnings" },
+            subtitle: { ru: "Сводка мастера: 11 заказов, чистый доход 10 338 € и комиссия сервиса", fr: "11 missions réalisées, 10 338 € de revenu net cumulé", en: "Summary showing 11 completed jobs and €10,338 net specialist earnings" },
+            action: { ru: "Контролируйте историю закрытых заказов", fr: "Suivez vos performances", en: "Monitor total earnings performance" },
             script: {
-                ru: "В кошельке отображаются ваши заработанные средства и статус допуска к приему новых заявок.",
-                fr: "Votre portefeuille présente vos gains disponibles et confirme votre éligibilité aux commandes.",
-                en: "The wallet displays available earned funds and confirms your ongoing eligibility for incoming jobs."
+                ru: "В истории заказов доступна статистика за всё время: 11 выполненных заявок и чистый доход 10 338 €.",
+                fr: "L'historique consigne vos gains totaux : 11 interventions terminées pour 10 338 € nets.",
+                en: "Order history tracks your performance: 11 completed jobs and €10,338 in net revenue."
             }
         },
         {
             id: 16,
-            category: { ru: "5. Финансы и Кошелек", fr: "5. Finances & Portefeuille", en: "5. Earnings & Wallet" },
-            img: "img/worker/photo_1_2026-09-10_21-52-10.jpg",
-            targetPos: { top: "82%", left: "50%" },
-            title: { ru: "16. Вывод средств на карту (Withdraw)", fr: "16. Virement des Revenus", en: "16. Request Instant Bank Withdrawal" },
+            category: { ru: "5. Финансы и Кошелек", fr: "5. Finances & Portefeuille", en: "5. Wallet Balance & Eligibility" },
+            img: "img/worker/11.jpg",
+            fallback: "img/worker/16.jpg",
+            targetPos: { top: "74%", left: "38%" },
+            title: { ru: "16. Кошелек мастера (Wallet Balance)", fr: "16. Portefeuille Artisan", en: "16. Specialist Wallet & Readiness Balance" },
+            subtitle: { ru: "Баланс (950.00 €), доступно к выводу и статус допуска к заказам", fr: "Solde disponible (950 €), fonds retirables et éligibilité", en: "Wallet balance (€950), withdrawable funds, and order eligibility status" },
+            action: { ru: "Нажмите «Withdraw» для вывода средств", fr: "Cliquez sur « Withdraw »", en: "Tap «Withdraw»" },
+            script: {
+                ru: "В кошельке отображаются заработанные средства (950 €) и статус допуска к приему новых заказов.",
+                fr: "Votre portefeuille affiche vos 950 € disponibles et confirme votre éligibilité.",
+                en: "The wallet displays available earned funds (€950) and confirms ongoing order eligibility."
+            }
+        },
+        {
+            id: 17,
+            category: { ru: "5. Финансы и Кошелек", fr: "5. Finances & Portefeuille", en: "5. Instant Bank Withdrawal" },
+            img: "img/worker/10.jpg",
+            fallback: "img/worker/17.jpg",
+            targetPos: { top: "74%", left: "50%" },
+            title: { ru: "17. Вывод средств на карту (Withdraw)", fr: "17. Virement des Revenus", en: "17. Request Instant Card Withdrawal" },
             subtitle: { ru: "Ввод суммы в EUR, выбор привязанной карты и кнопка «Request withdrawal»", fr: "Demande de transfert des fonds vers votre carte bancaire", en: "Entering EUR amount, selecting registered card, and confirming withdrawal" },
             action: { ru: "Нажмите «Request withdrawal»", fr: "Appuyez sur « Request withdrawal »", en: "Tap «Request withdrawal»" },
             script: {
                 ru: "Укажите сумму вывода в евро, выберите привязанную карту и нажмите 'Request withdrawal' для мгновенного зачисления.",
                 fr: "Indiquez la somme en euros, sélectionnez votre carte et cliquez sur 'Request withdrawal'.",
-                en: "Enter the EUR payout amount, choose your saved card, and tap 'Request withdrawal' for immediate payout."
+                en: "Enter the EUR payout amount, choose your saved card, and tap 'Request withdrawal'."
             }
         },
         {
-            id: 17,
-            category: { ru: "6. Профиль и KYC", fr: "6. Profil & KYC", en: "6. Profile & Verification" },
-            img: "img/worker/photo_11_2026-09-10_21-52-10.jpg",
+            id: 18,
+            category: { ru: "6. Профиль и верификация", fr: "6. Profil & Vérification", en: "6. Profile & Verification" },
+            img: "img/worker/7.jpg",
+            fallback: "img/worker/18.jpg",
             targetPos: { top: "16%", left: "80%" },
-            title: { ru: "17. Специальности и верификация (KYC VERIFIED)", fr: "17. Métiers & Statut KYC", en: "17. Service Trades & Verified KYC Badge" },
-            subtitle: { ru: "Управление профессиями (Plumbing, Electrical...), проверка верификации документов", fr: "Gestion des catégories de services et validation KYC", en: "Configuring trade categories and checking official KYC verification badge" },
+            title: { ru: "18. Специальности и статус KYC VERIFIED", fr: "18. Métiers & Statut KYC", en: "18. Service Trades & KYC Verified Status" },
+            subtitle: { ru: "Управление категориями (Plumbing, Electrical) и проверка статуса KYC", fr: "Gestion des catégories de services et validation officielle KYC", en: "Managing trade categories and verifying official KYC certified status" },
             action: { ru: "Настройте категории через кнопку «Edit»", fr: "Gérez vos spécialités via « Edit »", en: "Manage trade categories via «Edit»" },
             script: {
-                ru: "В профиле вы можете настроить оказываемые услуги через кнопку 'Edit' и проверить статус официальной верификации KYC.",
-                fr: "Dans votre profil, ajustez vos domaines d'intervention et confirmez votre badge de certification KYC.",
-                en: "In your profile, configure the services you provide via 'Edit' and verify your official KYC status."
+                ru: "В профиле мастера можно настроить оказываемые услуги через кнопку 'Edit' и проверить официальный статус верификации KYC.",
+                fr: "Ajustez vos spécialités d'intervention et confirmez votre statut de vérification KYC officielle.",
+                en: "In your specialist settings, configure active trade categories and verify your official KYC status."
             }
         }
     ];
@@ -837,6 +881,117 @@
         return currentScope === 'client' ? clientSlides : workerSlides;
     }
 
+    function resolveSlideImageSrc(s) {
+        if (!s || !s.img) return '';
+        const filename = s.img.split('/').pop();
+        if (window.localAssets[filename]) return window.localAssets[filename];
+        if (window.localAssets[s.img]) return window.localAssets[s.img];
+        return s.img;
+    }
+
+    function handleSlideImageError(imgEl, slideId, scope) {
+        if (!imgEl) return;
+        const targetScope = scope || currentScope;
+        const slidesList = targetScope === 'client' ? clientSlides : workerSlides;
+        const currentSlideObj = slidesList.find(s => s.id === Number(slideId)) || slidesList[currentSlideIdx] || slidesList[0];
+
+        if (currentSlideObj && currentSlideObj.fallback && !imgEl.dataset.triedFallback) {
+            imgEl.dataset.triedFallback = "true";
+            imgEl.src = currentSlideObj.fallback;
+            return;
+        }
+
+        if (!imgEl.dataset.triedIndex) {
+            imgEl.dataset.triedIndex = "true";
+            imgEl.src = `img/${targetScope}/${slideId}.jpg`;
+            return;
+        }
+
+        imgEl.onerror = null;
+        const parent = imgEl.parentElement;
+        if (parent) {
+            const imgName = (currentSlideObj && currentSlideObj.img) ? currentSlideObj.img.split('/').pop() : 'screenshot.jpg';
+            parent.innerHTML = `
+          <div class="w-full h-full flex flex-col items-center justify-center p-6 text-center select-none bg-slate-950">
+            <div class="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-3xl mb-4 shadow-lg shadow-emerald-500/10">
+              📱
+            </div>
+            <h3 class="text-xs font-black text-white mb-1 font-mono">${imgName}</h3>
+            <p class="text-[11px] text-slate-400 max-w-[220px] mb-4 leading-relaxed">
+              Файл скриншота готов к показу в локальной папке проекта.
+            </p>
+            <button onclick="toggleDisplayMode()" class="px-3 py-1.5 rounded-lg bg-brand-teal text-slate-950 font-bold text-xs">
+              Показать живую карту
+            </button>
+          </div>
+        `;
+        }
+    }
+
+    function renderBrandLogoFallback(imgElement) {
+        if (!imgElement) return;
+        if (window.localAssets['BYFRO1.png']) {
+            imgElement.src = window.localAssets['BYFRO1.png'];
+            return;
+        }
+        imgElement.onerror = null;
+        const parent = imgElement.parentElement;
+        if (parent) {
+            parent.innerHTML = `
+          <svg class="w-full h-full p-1" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="100" height="100" rx="20" fill="#0f172a"/>
+            <path d="M25 15 H55 C70 15 80 25 80 38 C80 47 73 54 64 57 C75 60 82 69 82 80 C82 92 70 95 55 95 H25 V15 Z" fill="#14b8a6"/>
+            <path d="M42 30 H54 C60 30 65 33 65 39 C65 45 60 48 54 48 H42 V30 Z" fill="#0f172a"/>
+            <path d="M42 62 H56 C62 62 67 65 67 72 C67 79 62 82 56 82 H42 V62 Z" fill="#0f172a"/>
+          </svg>
+        `;
+        }
+    }
+
+    function handleFolderSelect(event) {
+        const files = event.target.files;
+        if (!files || files.length === 0) return;
+        processLoadedFiles(files);
+    }
+
+    function processLoadedFiles(files) {
+        let count = 0;
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const url = URL.createObjectURL(file);
+            window.localAssets[file.name] = url;
+            if (file.webkitRelativePath) {
+                window.localAssets[file.webkitRelativePath] = url;
+            }
+            count++;
+
+            if (file.name === 'BYFRO1.png' || file.name.toLowerCase().includes('logo')) {
+                const mainLogo = document.getElementById('main-brand-logo');
+                if (mainLogo) mainLogo.src = url;
+            }
+        }
+
+        const btnFolder = document.getElementById('btn-load-folder');
+        if (btnFolder) {
+            btnFolder.classList.remove('bg-emerald-950/80', 'border-emerald-500/50', 'text-emerald-300');
+            btnFolder.classList.add('bg-emerald-600', 'text-white', 'border-emerald-400');
+            const text = document.getElementById('btn-load-folder-text');
+            if (text) text.textContent = `✓ Загружено ${count} фото`;
+        }
+
+        renderSlide();
+        renderGridCards();
+    }
+
+    window.addEventListener('dragover', (e) => e.preventDefault());
+    window.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            processLoadedFiles(e.dataTransfer.files);
+        }
+    });
+
+    /* SCOPE & VIEW CONTROL */
     function switchAppScope(scope) {
         currentScope = scope;
         currentSlideIdx = 0;
@@ -986,6 +1141,7 @@
         renderGridCards();
     }
 
+    /* MAP SIMULATION ENGINE */
     function stopMapAnimation() {
         if (mapAnimFrameId !== null) {
             cancelAnimationFrame(mapAnimFrameId);
@@ -1112,6 +1268,7 @@
         animate();
     }
 
+    /* SLIDE RENDERER */
     function renderSlide() {
         stopMapAnimation();
 
@@ -1119,10 +1276,11 @@
         if (currentSlideIdx >= slides.length) currentSlideIdx = slides.length - 1;
         if (currentSlideIdx < 0) currentSlideIdx = 0;
 
-        const slide = slides[currentSlideIdx];
+        slide = slides[currentSlideIdx];
+        window.slide = slide;
+
         const cur = dict[currentLang] || dict.ru;
 
-        // Update Dynamic Top Badge & Category
         const badge = document.getElementById('slide-app-badge');
         if (currentScope === 'client') {
             badge.textContent = cur.clientBadge;
@@ -1138,21 +1296,17 @@
         document.getElementById('lbl-step-word').textContent = cur.stepWord;
         document.getElementById('slide-counter').textContent = `${String(slide.id).padStart(2, '0')} / ${String(slides.length).padStart(2, '0')}`;
 
-        // Update Localized Slide Texts
         document.getElementById('slide-title').textContent = slide.title[currentLang] || slide.title.ru;
         document.getElementById('slide-subtitle').textContent = slide.subtitle[currentLang] || slide.subtitle.ru;
         document.getElementById('slide-action-text').textContent = slide.action[currentLang] || slide.action.ru;
         document.getElementById('slide-narration-text').textContent = `"${slide.script[currentLang] || slide.script.ru}"`;
 
-        // Update Navigation Button Texts
         document.getElementById('btn-prev-text').textContent = cur.prev;
         document.getElementById('btn-next-text').textContent = cur.next;
 
-        // Update Switch View Button Text
         const switchViewBtn = document.getElementById('btn-switch-view-text');
         if (switchViewBtn) switchViewBtn.textContent = cur.switchView;
 
-        // Update Display Mode Controls & Badges
         const btnText = document.getElementById('display-mode-text');
         const btnIcon = document.getElementById('display-mode-icon');
         const uiBadge = document.getElementById('device-ui-badge');
@@ -1185,26 +1339,27 @@
                 <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
                 <span class="text-xs font-bold text-white">Live Route Navigation</span>
               </div>
-              <span class="text-[10px] font-mono text-brand-teal font-bold bg-brand-teal/20 px-2 py-0.5 rounded border border-brand-teal/40">GPS: 34 km/h</span>
+              <span class="text-[10px] font-mono text-brand-teal font-bold bg-brand-teal/20 px-2 py-0.5 rounded border border-brand-teal/40">GPS: Active</span>
             </div>
 
             <div class="z-10 p-3.5 bg-slate-900/95 backdrop-blur m-2 rounded-2xl border border-slate-800 shadow-2xl space-y-1">
               <div class="flex justify-between text-xs text-slate-300">
-                <span>111 Gusan Sheram Street</span>
+                <span>Arshakunyats Ave, Yerevan</span>
                 <span class="font-bold text-emerald-400">ETA &lt; 1 min</span>
               </div>
-              <div class="text-[11px] text-slate-400">Distance remaining: <b class="text-white">37 meters</b></div>
+              <div class="text-[11px] text-slate-400">Distance remaining: <b class="text-white">5 meters</b></div>
             </div>
           </div>
         `;
             setTimeout(startMapAnimation, 40);
         } else {
+            const resolvedSrc = resolveSlideImageSrc(slide);
             mockupContainer.innerHTML = `
           <div class="w-full h-full relative overflow-hidden bg-slate-950 flex items-center justify-center">
-            <img src="${slide.img}"
+            <img src="${resolvedSrc}"
                  alt="Screen ${slide.id}"
-                 class="w-full h-full object-cover object-top select-none"
-                 onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'p-6 text-center text-xs text-slate-400\\'><div class=\\'w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 mx-auto flex items-center justify-center text-xl mb-3\\'>🖼️</div><div class=\\'font-bold text-white mb-1\\'>Не найден файл: ${slide.img}</div><div class=\\'text-[10px] text-slate-500 mb-3\\'>Проверьте папку img/client или img/worker</div><button onclick=\\'toggleDisplayMode()\\' class=\\'px-3 py-1.5 rounded-lg bg-brand-teal text-slate-950 font-bold text-[10px]\\'>Показать карту</button></div>';">
+                 class="w-full h-full object-cover object-top select-none transition-opacity duration-200"
+                 onerror="handleSlideImageError(this, ${slide.id}, '${currentScope}')">
           </div>
         `;
         }
